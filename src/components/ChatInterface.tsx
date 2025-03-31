@@ -40,36 +40,55 @@ const ChatInterface: React.FC = () => {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
     
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Prepare messages array for the API
+      const apiMessages = messages.concat(userMessage).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+      
+      // Call OpenAI API
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`, 
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini', // Using a modern model
+          messages: apiMessages,
+          temperature: 0.7,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const aiResponse = data.choices[0]?.message?.content || "Sorry, I couldn't generate a response.";
+      
+      // Add AI response
       const aiMessage: Message = {
         role: "assistant",
-        content: getSimulatedResponse(content),
+        content: aiResponse,
         timestamp: new Date(),
       };
       
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error);
+      
+      // Add error message
+      const errorMessage: Message = {
+        role: "assistant",
+        content: "Sorry, I encountered an error while processing your request. Please try again.",
+        timestamp: new Date(),
+      };
+      
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
-  };
-
-  const getSimulatedResponse = (message: string): string => {
-    const lowerMessage = message.toLowerCase();
-    
-    if (lowerMessage.includes("hello") || lowerMessage.includes("hi")) {
-      return "Hello there! How can I assist you today?";
-    } else if (lowerMessage.includes("how are you")) {
-      return "I'm just a program, but I'm functioning well. Thanks for asking! How can I help you?";
-    } else if (lowerMessage.includes("thank")) {
-      return "You're welcome! Is there anything else you'd like to know?";
-    } else if (lowerMessage.includes("bye") || lowerMessage.includes("goodbye")) {
-      return "Goodbye! Feel free to chat again whenever you need assistance.";
-    } else if (lowerMessage.includes("name")) {
-      return "I'm an AI assistant designed to help answer your questions and assist with tasks.";
-    } else if (lowerMessage.includes("?")) {
-      return "That's an interesting question. While I'm just a simple demo, a fully implemented AI could provide a detailed answer to this.";
-    } else {
-      return "I understand. In a complete implementation, I would process your message and provide a helpful response based on my training.";
     }
   };
 
