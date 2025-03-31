@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect } from "react";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import Header from "./Header";
+import SettingsDialog from "./SettingsDialog";
+import { useToast } from "@/hooks/use-toast";
 
 export interface Message {
   role: "user" | "assistant";
@@ -19,7 +21,10 @@ const ChatInterface: React.FC = () => {
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [openSettings, setOpenSettings] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -28,6 +33,22 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    // Check if API key exists on mount
+    chrome.storage.sync.get(["openaiApiKey"], (result) => {
+      if (result.openaiApiKey) {
+        setApiKey(result.openaiApiKey);
+      } else {
+        // If no API key is found, open settings dialog
+        setOpenSettings(true);
+        toast({
+          title: "API Key Required",
+          description: "Please enter your OpenAI API key to use the chatbot.",
+        });
+      }
+    });
+  }, []);
 
   const handleSendMessage = async (content: string) => {
     // Add user message
@@ -41,6 +62,11 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true);
     
     try {
+      // Check if API key exists
+      if (!apiKey) {
+        throw new Error("No API key provided");
+      }
+      
       // Prepare messages array for the API
       const apiMessages = messages.concat(userMessage).map(msg => ({
         role: msg.role,
@@ -52,7 +78,7 @@ const ChatInterface: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`, 
+          'Authorization': `Bearer ${apiKey}`, 
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini', // Using a modern model
@@ -62,7 +88,8 @@ const ChatInterface: React.FC = () => {
       });
       
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API request failed: ${errorData.error?.message || response.statusText}`);
       }
       
       const data = await response.json();
@@ -79,14 +106,25 @@ const ChatInterface: React.FC = () => {
     } catch (error) {
       console.error('Error calling OpenAI API:', error);
       
+      let errorMessage = "Sorry, I encountered an error while processing your request. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("API key")) {
+          errorMessage = "API key is missing or invalid. Please update it in settings.";
+          setOpenSettings(true);
+        } else if (error.message.includes("API request failed")) {
+          errorMessage = error.message;
+        }
+      }
+      
       // Add error message
-      const errorMessage: Message = {
+      const errorMsg: Message = {
         role: "assistant",
-        content: "Sorry, I encountered an error while processing your request. Please try again.",
+        content: errorMessage,
         timestamp: new Date(),
       };
       
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +132,7 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex flex-col h-[500px] w-[350px] max-h-[500px] bg-background shadow-lg rounded-lg overflow-hidden">
-      <Header />
+      <Header onOpenSettings={() => setOpenSettings(true)} />
       
       <div className="flex-1 overflow-y-auto p-3 chat-scrollbar">
         <div className="space-y-2">
@@ -121,6 +159,21 @@ const ChatInterface: React.FC = () => {
       </div>
       
       <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+      
+      <SettingsDialog 
+        open={openSettings} 
+        onOpenChange={(open) => {
+          setOpenSettings(open);
+          if (!open) {
+            // Refresh API key when settings dialog is closed
+            chrome.storage.sync.get(["openaiApiKey"], (result) => {
+              if (result.openaiApiKey) {
+                setApiKey(result.openaiApiKey);
+              }
+            });
+          }
+        }} 
+      />
     </div>
   );
 };
