@@ -35,9 +35,10 @@ const ChatInterface: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Load saved messages and API key on mount
   useEffect(() => {
-    // Check if API key exists on mount
-    chromeStorage.sync.get(["openaiApiKey"], (result) => {
+    chromeStorage.sync.get(["openaiApiKey", "chatHistory"], (result) => {
+      // Load API key
       if (result.openaiApiKey) {
         setApiKey(result.openaiApiKey);
       } else {
@@ -48,8 +49,37 @@ const ChatInterface: React.FC = () => {
           description: "Please enter your OpenAI API key to use the chatbot.",
         });
       }
+      
+      // Load chat history if it exists
+      if (result.chatHistory) {
+        try {
+          const savedMessages = JSON.parse(result.chatHistory) as Message[];
+          // Convert string timestamps back to Date objects
+          const messagesWithDates = savedMessages.map(msg => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(messagesWithDates);
+        } catch (error) {
+          console.error("Error parsing saved chat history:", error);
+        }
+      }
     });
   }, []);
+
+  // Save messages whenever they change
+  useEffect(() => {
+    // Skip saving the initial welcome message when it's the only message
+    if (messages.length === 1 && messages[0].role === "assistant" && 
+        messages[0].content === "Hello! I'm your AI assistant. How can I help you today?") {
+      return;
+    }
+    
+    // Save messages to storage
+    chromeStorage.sync.set({ 
+      chatHistory: JSON.stringify(messages) 
+    });
+  }, [messages]);
 
   const handleSendMessage = async (content: string) => {
     // Add user message

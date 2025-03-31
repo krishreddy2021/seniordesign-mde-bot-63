@@ -3,7 +3,11 @@
 const localStorageStore: Record<string, any> = {};
 
 // Check if running in a Chrome extension environment
-const isExtensionEnvironment = typeof chrome !== 'undefined' && chrome.storage !== undefined;
+const isExtensionEnvironment = typeof window !== 'undefined' && 
+  'chrome' in window && 
+  window.chrome !== undefined && 
+  'storage' in window.chrome && 
+  window.chrome.storage !== undefined;
 
 // Storage interface that matches Chrome's storage API
 export const chromeStorage = {
@@ -11,7 +15,7 @@ export const chromeStorage = {
     get: (keys: string[], callback: (result: Record<string, any>) => void) => {
       if (isExtensionEnvironment) {
         // Use actual Chrome storage in extension environment
-        chrome.storage.sync.get(keys, callback);
+        window.chrome.storage.sync.get(keys, callback);
       } else {
         // Use localStorage in development environment
         const result: Record<string, any> = {};
@@ -27,7 +31,7 @@ export const chromeStorage = {
     set: (items: Record<string, any>, callback?: () => void) => {
       if (isExtensionEnvironment) {
         // Use actual Chrome storage in extension environment
-        chrome.storage.sync.set(items, callback);
+        window.chrome.storage.sync.set(items, callback);
       } else {
         // Use localStorage in development environment
         Object.entries(items).forEach(([key, value]) => {
@@ -41,3 +45,17 @@ export const chromeStorage = {
     }
   }
 };
+
+// Add Chrome types for TypeScript
+declare global {
+  interface Window {
+    chrome?: {
+      storage?: {
+        sync: {
+          get: (keys: string[], callback: (result: Record<string, any>) => void) => void;
+          set: (items: Record<string, any>, callback?: () => void) => void;
+        }
+      }
+    }
+  }
+}
