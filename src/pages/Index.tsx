@@ -3,7 +3,11 @@ import React from "react";
 import ChatInterface from "@/components/ChatInterface";
 
 const Index: React.FC = () => {
-  return <ChatInterface />;
+  return (
+    <div className="extension-container">
+      <ChatInterface />
+    </div>
+  );
 };
 
 export default Index;

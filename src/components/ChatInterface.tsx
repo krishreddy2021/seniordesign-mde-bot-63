@@ -74,11 +74,11 @@ const ChatInterface: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen max-h-screen bg-background">
+    <div className="flex flex-col h-[500px] w-[350px] max-h-[500px] bg-background shadow-lg rounded-lg overflow-hidden">
       <Header />
       
-      <div className="flex-1 overflow-y-auto p-4 chat-scrollbar">
-        <div className="max-w-3xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-3 chat-scrollbar">
+        <div className="space-y-2">
           {messages.map((message, index) => (
             <ChatMessage
               key={index}
@@ -88,13 +88,13 @@ const ChatInterface: React.FC = () => {
             />
           ))}
           {isLoading && (
-            <div className="flex items-center space-x-2 px-4 py-2 max-w-fit rounded-full bg-secondary text-secondary-foreground mb-4">
+            <div className="flex items-center space-x-2 px-3 py-1 max-w-fit rounded-full bg-secondary text-secondary-foreground mb-2">
               <div className="flex space-x-1">
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
-              <span className="text-sm">Thinking...</span>
+              <span className="text-xs">Thinking...</span>
             </div>
           )}
           <div ref={messagesEndRef} />

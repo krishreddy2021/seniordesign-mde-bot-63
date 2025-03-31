@@ -21,39 +21,39 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   return (
     <div
       className={cn(
-        "flex w-full mb-4 message-animation",
+        "flex w-full mb-2 message-animation",
         isUser ? "justify-end" : "justify-start"
       )}
     >
       <div
         className={cn(
-          "flex max-w-[80%] md:max-w-[70%]",
+          "flex max-w-[85%]",
           isUser ? "flex-row-reverse" : "flex-row"
         )}
       >
         <div
           className={cn(
-            "flex items-center justify-center h-8 w-8 rounded-full flex-shrink-0 mt-1",
-            isUser ? "ml-2 bg-primary text-white" : "mr-2 bg-secondary text-primary"
+            "flex items-center justify-center h-6 w-6 rounded-full flex-shrink-0 mt-1",
+            isUser ? "ml-1 bg-primary text-white" : "mr-1 bg-secondary text-primary"
           )}
         >
-          {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+          {isUser ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
         </div>
         
         <div>
           <div
             className={cn(
-              "px-4 py-3 rounded-2xl",
+              "px-3 py-2 text-sm rounded-2xl",
               isUser
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-secondary-foreground"
             )}
           >
-            <p className="whitespace-pre-wrap">{content}</p>
+            <p className="whitespace-pre-wrap text-xs">{content}</p>
           </div>
           <div
             className={cn(
-              "text-xs text-muted-foreground mt-1",
+              "text-[10px] text-muted-foreground mt-0.5",
               isUser ? "text-right" : "text-left"
             )}
           >
