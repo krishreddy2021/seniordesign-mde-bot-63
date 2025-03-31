@@ -5,6 +5,7 @@ import ChatInput from "./ChatInput";
 import Header from "./Header";
 import SettingsDialog from "./SettingsDialog";
 import { useToast } from "@/hooks/use-toast";
+import { chromeStorage } from "@/utils/chromeStorage";
 
 export interface Message {
   role: "user" | "assistant";
@@ -36,7 +37,7 @@ const ChatInterface: React.FC = () => {
 
   useEffect(() => {
     // Check if API key exists on mount
-    chrome.storage.sync.get(["openaiApiKey"], (result) => {
+    chromeStorage.sync.get(["openaiApiKey"], (result) => {
       if (result.openaiApiKey) {
         setApiKey(result.openaiApiKey);
       } else {
@@ -166,7 +167,7 @@ const ChatInterface: React.FC = () => {
           setOpenSettings(open);
           if (!open) {
             // Refresh API key when settings dialog is closed
-            chrome.storage.sync.get(["openaiApiKey"], (result) => {
+            chromeStorage.sync.get(["openaiApiKey"], (result) => {
               if (result.openaiApiKey) {
                 setApiKey(result.openaiApiKey);
               }

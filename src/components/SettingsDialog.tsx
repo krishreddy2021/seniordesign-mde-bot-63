@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { chromeStorage } from "@/utils/chromeStorage";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -18,7 +19,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
   useEffect(() => {
     // Load saved API key when dialog opens
     if (open) {
-      chrome.storage.sync.get(["openaiApiKey"], (result) => {
+      chromeStorage.sync.get(["openaiApiKey"], (result) => {
         if (result.openaiApiKey) {
           setApiKey(result.openaiApiKey);
         }
@@ -28,7 +29,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
 
   const handleSaveSettings = () => {
     // Save API key to Chrome storage
-    chrome.storage.sync.set({ openaiApiKey: apiKey }, () => {
+    chromeStorage.sync.set({ openaiApiKey: apiKey }, () => {
       toast({
         title: "Settings saved",
         description: "Your API key has been saved.",
