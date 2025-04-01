@@ -31,6 +31,14 @@ const Header: React.FC<HeaderProps> = ({
       </div>
       <div className="flex items-center space-x-1">
         {children}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onOpenSettings}
+          className="h-9 w-9 rounded-full"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </div>
     </header>
   );

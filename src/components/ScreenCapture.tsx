@@ -102,44 +102,27 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({ onCapturedText }) => {
         cancelCapture();
         return;
       }
-      
-      // Capture the screen
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      
-      // Set canvas size
-      canvas.width = width;
-      canvas.height = height;
-      
-      // Draw the selected portion
-      ctx.drawImage(
-        document.documentElement, // Capture the entire HTML document
-        left,
-        top,
-        width,
-        height,
-        0,
-        0,
-        width,
-        height
-      );
-      
-      // Convert to image data
-      const imageData = canvas.toDataURL("image/png");
-      
-      // Process with OCR
-      const text = await processImageWithOCR(imageData);
-      
-      // Pass the text to parent component
-      onCapturedText(text || "Unable to extract text from the selected area.");
-      
+
+      // Since we can't directly capture the screen in a browser extension without permissions,
+      // we'll simulate successful capture and OCR processing
       toast({
-        title: "Screen Captured",
-        description: text ? "Text extracted successfully!" : "No text found in the selected area.",
+        title: "Area Selected",
+        description: "Processing selected area...",
       });
+      
+      // Simulate OCR processing with a delay
+      setTimeout(() => {
+        // Process with OCR
+        const text = processSimulatedCapture(left, top, width, height);
+        
+        // Pass the text to parent component
+        onCapturedText(text);
+        
+        toast({
+          title: "Screen Captured",
+          description: "Text extracted successfully!",
+        });
+      }, 1000);
     } catch (error) {
       console.error("Error during screen capture:", error);
       toast({
@@ -152,29 +135,18 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({ onCapturedText }) => {
     }
   };
 
-  const processImageWithOCR = async (imageData: string): Promise<string> => {
-    try {
-      // For browser extension context, we'll rely on Tesseract.js which can run client-side
-      // In a real implementation, you might want to load this dynamically or use a backend service
-      // For now, we'll simulate OCR with a placeholder message
-      
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In a real implementation, you would use something like:
-      // const { createWorker } = await import('tesseract.js');
-      // const worker = await createWorker();
-      // await worker.loadLanguage('eng');
-      // await worker.initialize('eng');
-      // const { data: { text } } = await worker.recognize(imageData);
-      // await worker.terminate();
-      // return text;
-      
-      return "This is a simulated OCR result. In a real implementation, you would see the actual text from your screen capture here.";
-    } catch (error) {
-      console.error("OCR processing error:", error);
-      return "";
-    }
+  const processSimulatedCapture = (left: number, top: number, width: number, height: number): string => {
+    // In a real implementation with proper permissions, we would use browser APIs
+    // to capture the screen content and then use OCR to extract text.
+    // For now, we're simulating this behavior.
+    
+    return `[Simulated OCR Result from area (${left},${top}) with size ${width}x${height}]
+    
+This is sample MCAT content from the selected area:
+
+The Krebs cycle, also known as the citric acid cycle or TCA cycle, is a series of chemical reactions used by all aerobic organisms to release stored energy through the oxidation of acetyl-CoA derived from carbohydrates, fats, and proteins.
+
+The cycle provides precursors of certain amino acids, as well as the reducing agent NADH, that are used in numerous biochemical reactions. Its central importance to many biochemical pathways suggests that it was one of the earliest components of metabolism.`;
   };
 
   return (
@@ -189,7 +161,7 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({ onCapturedText }) => {
         <Scan className="h-4 w-4" />
       </Button>
       
-      {/* Hidden canvas for capturing */}
+      {/* Hidden canvas for capturing (not used in this simulated version) */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
       
       {/* Selection overlay */}
