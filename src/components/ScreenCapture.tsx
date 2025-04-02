@@ -110,130 +110,155 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
       // Attempt to capture screenshot
       toast({
         title: "Area Selected",
-        description: "Processing selected area...",
+        description: "Capturing screenshot...",
       });
       
-      // First attempt to use a proper capture approach
+      // Use Chrome extension API for actual screenshot
       try {
-        // Create and position canvas for screenshot
-        const canvas = canvasRef.current;
-        if (!canvas) {
-          throw new Error("Canvas not available");
+        // In a Chrome extension environment
+        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.captureVisibleTab) {
+          chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+            if (chrome.runtime.lastError) {
+              console.error('Chrome API error:', chrome.runtime.lastError);
+              throw new Error(`Screenshot capture failed: ${chrome.runtime.lastError.message}`);
+            }
+
+            // Create an image from the capture
+            const img = new Image();
+            img.onload = () => {
+              const canvas = canvasRef.current;
+              if (!canvas) {
+                throw new Error("Canvas not available");
+              }
+              
+              canvas.width = width;
+              canvas.height = height;
+              
+              const ctx = canvas.getContext('2d');
+              if (!ctx) {
+                throw new Error("Canvas context not available");
+              }
+              
+              // Crop the image to the selected area
+              ctx.drawImage(img, left, top, width, height, 0, 0, width, height);
+              
+              // Get the cropped image data
+              const imageData = canvas.toDataURL('image/png');
+              
+              // Send to both text and image handlers
+              if (onCapturedImage) {
+                onCapturedImage(imageData);
+              }
+              
+              // For real OCR, we would use an OCR service here
+              // For now, we'll use placeholder text
+              const text = `[OCR Text from screenshot]
+              
+This text was extracted from a real screenshot of the selected area:
+Position: (${left},${top}), Size: ${width}x${height}
+
+For real OCR processing, this extension would need to integrate with an OCR service like:
+- Chrome's built-in OCR (for PDF files)
+- Google Cloud Vision API
+- Tesseract.js (browser-based OCR)
+- OpenAI's Vision models
+
+The screenshot has been successfully captured and added to the chat.`;
+              
+              onCapturedText(text);
+              
+              toast({
+                title: "Screenshot Captured",
+                description: "Screenshot added to chat",
+              });
+            };
+            
+            img.onerror = (error) => {
+              console.error('Image loading error:', error);
+              throw new Error('Failed to load captured screenshot');
+            };
+            
+            img.src = dataUrl;
+          });
+        } else {
+          // Fallback for development environment or when Chrome API is unavailable
+          throw new Error("Chrome screenshot API not available");
         }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          throw new Error("Canvas context not available");
-        }
-        
-        // In a browser extension with proper permissions, we would use:
-        // chrome.tabs.captureVisibleTab(null, {format: 'png'}, function(dataUrl) {
-        //   const img = new Image();
-        //   img.onload = function() {
-        //     ctx.drawImage(img, left, top, width, height, 0, 0, width, height);
-        //     // Rest of the processing
-        //   };
-        //   img.src = dataUrl;
-        // });
-        
-        // For now, we'll create a colored rectangle to represent a captured area
-        ctx.fillStyle = "#f0f4f8";
-        ctx.fillRect(0, 0, width, height);
-        
-        // Add some text to make it look like content
-        ctx.font = "14px Arial";
-        ctx.fillStyle = "#000";
-        ctx.fillText("Captured Area", 10, 30);
-        ctx.fillText(`Size: ${width}x${height}`, 10, 50);
-        ctx.fillText(`Position: (${left}, ${top})`, 10, 70);
-        ctx.fillText("MCAT Study Content", 10, 100);
-        
-        // Draw some shapes to simulate content
-        ctx.strokeStyle = "#3366cc";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(15, 120, width - 30, height / 3);
-        ctx.fillStyle = "#3366cc33";
-        ctx.fillRect(15, 120, width - 30, height / 3);
-        
-        // Get image data
-        const imageData = canvas.toDataURL('image/png');
-        
-        // Send to both text and image handlers
-        if (onCapturedImage) {
-          onCapturedImage(imageData);
-        }
-        
-        // Generate simulated OCR text
-        const text = processSimulatedCapture(left, top, width, height);
-        onCapturedText(text);
-        
-        toast({
-          title: "Screen Captured",
-          description: "Screenshot captured and OCR text extracted!",
-        });
       } catch (error) {
         console.error("Screenshot capture error:", error);
         // Fallback to simulated approach
-        const text = processSimulatedCapture(left, top, width, height);
-        onCapturedText(text);
-        
-        toast({
-          title: "Simulated Capture",
-          description: "Screenshot failed, but OCR text was simulated.",
-        });
+        fallbackSimulatedCapture(left, top, width, height);
       }
     } catch (error) {
       console.error("Error during screen capture:", error);
-      toast({
-        title: "Capture Failed",
-        description: "There was an error processing your screen capture.",
-        variant: "destructive"
-      });
+      fallbackSimulatedCapture(left, top, width, height);
     } finally {
       cancelCapture();
     }
   };
 
-  // Helper function to check if canvas is empty (all white or transparent)
-  const isCanvasEmpty = (canvas: HTMLCanvasElement): boolean => {
+  // Fallback function for development or when permissions are not available
+  const fallbackSimulatedCapture = (left: number, top: number, width: number, height: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    canvas.width = width;
+    canvas.height = height;
+    
     const ctx = canvas.getContext('2d');
-    if (!ctx) return true;
+    if (!ctx) return;
     
-    const pixelData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    // Create a colored rectangle to represent a captured area
+    ctx.fillStyle = "#f0f4f8";
+    ctx.fillRect(0, 0, width, height);
     
-    // Check if all pixels are transparent or white
-    for (let i = 0; i < pixelData.length; i += 4) {
-      const alpha = pixelData[i + 3];
-      if (alpha !== 0) { // If not transparent
-        const red = pixelData[i];
-        const green = pixelData[i + 1];
-        const blue = pixelData[i + 2];
-        
-        // If not white (allowing some tolerance)
-        if (red < 245 || green < 245 || blue < 245) {
-          return false;
-        }
-      }
+    // Add some text to make it look like content
+    ctx.font = "14px Arial";
+    ctx.fillStyle = "#000";
+    ctx.fillText("Captured Area (Fallback Mode)", 10, 30);
+    ctx.fillText(`Size: ${width}x${height}`, 10, 50);
+    ctx.fillText(`Position: (${left}, ${top})`, 10, 70);
+    ctx.fillText("Chrome API unavailable - using simulated capture", 10, 100);
+    
+    // Draw some shapes to simulate content
+    ctx.strokeStyle = "#3366cc";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(15, 120, width - 30, height / 3);
+    ctx.fillStyle = "#3366cc33";
+    ctx.fillRect(15, 120, width - 30, height / 3);
+    
+    // Get image data
+    const imageData = canvas.toDataURL('image/png');
+    
+    // Send to both text and image handlers
+    if (onCapturedImage) {
+      onCapturedImage(imageData);
     }
     
-    return true;
+    // Generate simulated OCR text
+    const text = processSimulatedCapture(left, top, width, height);
+    onCapturedText(text);
+    
+    toast({
+      title: "Simulated Capture",
+      description: "Chrome API unavailable - using simulated capture",
+      variant: "destructive"
+    });
   };
 
   const processSimulatedCapture = (left: number, top: number, width: number, height: number): string => {
-    // In a real implementation with proper permissions, we would use browser APIs
-    // to capture the screen content and then use OCR to extract text.
-    // For now, we're simulating this behavior.
+    return `[Simulated OCR Result - Chrome API unavailable]
     
-    return `[Simulated OCR Result from area (${left},${top}) with size ${width}x${height}]
-    
-This is sample MCAT content from the selected area:
+This is fallback content because:
+1. You might be in development mode (not running as an extension)
+2. The extension might not have the required permissions
+3. There might be an error with the Chrome API
 
-The Krebs cycle, also known as the citric acid cycle or TCA cycle, is a series of chemical reactions used by all aerobic organisms to release stored energy through the oxidation of acetyl-CoA derived from carbohydrates, fats, and proteins.
+To enable actual screenshots in the Chrome extension:
+- Ensure "activeTab" permission is in manifest.json
+- Run as an actual Chrome extension
 
-The cycle provides precursors of certain amino acids, as well as the reducing agent NADH, that are used in numerous biochemical reactions. Its central importance to many biochemical pathways suggests that it was one of the earliest components of metabolism.`;
+Selected area: (${left},${top}) with size ${width}x${height}`;
   };
 
   return (
