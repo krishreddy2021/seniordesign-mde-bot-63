@@ -4,7 +4,7 @@ import ChatInterface from "@/components/ChatInterface";
 
 const Index: React.FC = () => {
   return (
-    <div className="extension-container">
+    <div className="extension-container h-screen flex items-center justify-center">
       <ChatInterface />
     </div>
   );

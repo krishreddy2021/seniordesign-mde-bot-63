@@ -1,51 +1,66 @@
 
 // Background script for handling extension commands
 
-// Track if the popup is currently open
-let isPopupOpen = false;
-let popupWindow = null;
+// Track if the panel is currently open
+let isPanelOpen = false;
+let panelTab = null;
 
 // Listen for keyboard commands
 chrome.commands.onCommand.addListener((command) => {
   if (command === 'toggle_extension') {
-    if (isPopupOpen && popupWindow) {
-      // Close the window if it's open
-      chrome.windows.remove(popupWindow.id);
-      popupWindow = null;
-      isPopupOpen = false;
+    if (isPanelOpen && panelTab) {
+      // Close the panel if it's open
+      chrome.tabs.remove(panelTab.id);
+      panelTab = null;
+      isPanelOpen = false;
     } else {
-      // Open the extension in a popup window
-      openPopupWindow();
+      // Open the extension in a panel
+      openPanel();
     }
   }
 });
 
-// Open our extension in a dedicated popup window
-function openPopupWindow() {
-  const popupURL = chrome.runtime.getURL('index.html');
-  chrome.windows.create({
-    url: popupURL,
-    type: 'popup',
-    width: 400,
-    height: 600,
-    focused: true
-  }, (window) => {
-    popupWindow = window;
-    isPopupOpen = true;
+// Open our extension in a pinnable side panel
+function openPanel() {
+  const extensionURL = chrome.runtime.getURL('index.html');
+  
+  // First check if the panel is already open
+  chrome.tabs.query({}, (tabs) => {
+    const existingPanel = tabs.find(tab => tab.url && tab.url.includes(extensionURL));
+    
+    if (existingPanel) {
+      // Focus the existing panel
+      chrome.tabs.update(existingPanel.id, { active: true });
+      panelTab = existingPanel;
+      isPanelOpen = true;
+    } else {
+      // Create a new panel
+      chrome.tabs.create({
+        url: extensionURL,
+        pinned: true,
+        active: true
+      }, (tab) => {
+        panelTab = tab;
+        isPanelOpen = true;
+      });
+    }
   });
 }
 
 // Listen for clicks on the extension icon
 chrome.action.onClicked.addListener(() => {
-  if (!isPopupOpen) {
-    openPopupWindow();
+  if (!isPanelOpen) {
+    openPanel();
+  } else if (panelTab) {
+    // Focus the existing panel
+    chrome.tabs.update(panelTab.id, { active: true });
   }
 });
 
-// Track closed windows
-chrome.windows.onRemoved.addListener((windowId) => {
-  if (popupWindow && popupWindow.id === windowId) {
-    popupWindow = null;
-    isPopupOpen = false;
+// Track closed tabs
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (panelTab && panelTab.id === tabId) {
+    panelTab = null;
+    isPanelOpen = false;
   }
 });

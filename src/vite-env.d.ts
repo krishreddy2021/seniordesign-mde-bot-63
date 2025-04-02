@@ -14,6 +14,11 @@ interface Window {
       query: (queryInfo: any, callback: (tabs: any[]) => void) => void;
       captureVisibleTab: (windowId: number | null, options: any, callback: (dataUrl: string) => void) => void;
       create: (createProperties: any, callback?: (tab: any) => void) => void;
+      update: (tabId: number, updateProperties: any, callback?: (tab: any) => void) => void;
+      remove: (tabId: number, callback?: () => void) => void;
+      onRemoved: {
+        addListener: (callback: (tabId: number, removeInfo: any) => void) => void;
+      };
     };
     runtime?: {
       id?: string;
