@@ -119,7 +119,7 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
         // In a Chrome extension environment
         if (isChromeExtension() && window.chrome?.tabs?.captureVisibleTab) {
           window.chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
-            if (window.chrome?.runtime.lastError) {
+            if (window.chrome?.runtime?.lastError) {
               console.error('Chrome API error:', window.chrome.runtime.lastError);
               throw new Error(`Screenshot capture failed: ${window.chrome.runtime.lastError.message}`);
             }
@@ -196,12 +196,23 @@ The screenshot has been successfully captured and added to the chat.`;
       }
     } catch (error) {
       console.error("Error during screen capture:", error);
-      // Fix: Pass the locally calculated coordinates, not window or undefined
-      const captureLeft = left;
-      const captureTop = top;
-      const captureWidth = width;
-      const captureHeight = height;
-      fallbackSimulatedCapture(captureLeft, captureTop, captureWidth, captureHeight);
+      // Make sure we have local variables defined for the fallback
+      if (startPoint && selectionRef.current) {
+        const endPoint = {
+          x: e.clientX,
+          y: e.clientY
+        };
+        
+        // Calculate dimensions again to ensure they're in scope
+        const captureLeft = Math.min(startPoint.x, endPoint.x);
+        const captureTop = Math.min(startPoint.y, endPoint.y);
+        const captureWidth = Math.abs(endPoint.x - startPoint.x);
+        const captureHeight = Math.abs(endPoint.y - startPoint.y);
+        fallbackSimulatedCapture(captureLeft, captureTop, captureWidth, captureHeight);
+      } else {
+        // If we don't have the dimensions, just use some defaults
+        fallbackSimulatedCapture(0, 0, 300, 200);
+      }
     } finally {
       cancelCapture();
     }
