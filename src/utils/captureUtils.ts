@@ -7,8 +7,7 @@
 export const isChromeExtension = (): boolean => {
   return typeof window !== 'undefined' && 
     typeof window.chrome !== 'undefined' && 
-    !!window.chrome.runtime && 
-    !!window.chrome.runtime.id;
+    !!window.chrome.runtime;
 };
 
 /**
@@ -27,7 +26,7 @@ export const hasCapturePermission = async (): Promise<boolean> => {
       }
       
       window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (window.chrome?.runtime.lastError || !tabs || !tabs[0] || !tabs[0].id) {
+        if (window.chrome?.runtime?.lastError || !tabs || !tabs[0] || !tabs[0].id) {
           resolve(false);
           return;
         }

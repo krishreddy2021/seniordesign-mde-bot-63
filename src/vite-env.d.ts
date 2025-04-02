@@ -16,6 +16,7 @@ interface Window {
       create: (createProperties: any, callback?: (tab: any) => void) => void;
     };
     runtime?: {
+      id?: string;
       lastError?: {
         message: string;
       };

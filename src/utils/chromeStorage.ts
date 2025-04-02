@@ -46,16 +46,4 @@ export const chromeStorage = {
   }
 };
 
-// Add Chrome types for TypeScript
-declare global {
-  interface Window {
-    chrome?: {
-      storage?: {
-        sync: {
-          get: (keys: string[], callback: (result: Record<string, any>) => void) => void;
-          set: (items: Record<string, any>, callback?: () => void) => void;
-        }
-      }
-    }
-  }
-}
+// We don't need to declare the global interface here as it's already in vite-env.d.ts
