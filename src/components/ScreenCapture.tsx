@@ -188,11 +188,20 @@ The screenshot has been successfully captured and added to the chat.`;
       } catch (error) {
         console.error("Screenshot capture error:", error);
         // Fallback to simulated approach
-        fallbackSimulatedCapture(left, top, width, height);
+        const captureLeft = left;
+        const captureTop = top;
+        const captureWidth = width;
+        const captureHeight = height;
+        fallbackSimulatedCapture(captureLeft, captureTop, captureWidth, captureHeight);
       }
     } catch (error) {
       console.error("Error during screen capture:", error);
-      fallbackSimulatedCapture(left, top, width, height);
+      // Fix: Pass the locally calculated coordinates, not window or undefined
+      const captureLeft = left;
+      const captureTop = top;
+      const captureWidth = width;
+      const captureHeight = height;
+      fallbackSimulatedCapture(captureLeft, captureTop, captureWidth, captureHeight);
     } finally {
       cancelCapture();
     }
