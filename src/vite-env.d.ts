@@ -30,5 +30,22 @@ interface Window {
       request: (permissions: any, callback: (granted: boolean) => void) => void;
       contains: (permissions: any, callback: (result: boolean) => void) => void;
     };
+    commands?: {
+      onCommand: {
+        addListener: (callback: (command: string) => void) => void;
+      };
+    };
+    windows?: {
+      create: (createProperties: any, callback?: (window: any) => void) => void;
+      remove: (windowId: number, callback?: () => void) => void;
+      onRemoved: {
+        addListener: (callback: (windowId: number) => void) => void;
+      };
+    };
+    action?: {
+      onClicked: {
+        addListener: (callback: () => void) => void;
+      };
+    };
   };
 }
