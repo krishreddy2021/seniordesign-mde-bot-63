@@ -5,9 +5,10 @@
  * Checks if the current environment is a Chrome extension
  */
 export const isChromeExtension = (): boolean => {
-  return typeof chrome !== 'undefined' && 
-    !!chrome.runtime && 
-    !!chrome.runtime.id;
+  return typeof window !== 'undefined' && 
+    typeof window.chrome !== 'undefined' && 
+    !!window.chrome.runtime && 
+    !!window.chrome.runtime.id;
 };
 
 /**
@@ -19,20 +20,20 @@ export const hasCapturePermission = async (): Promise<boolean> => {
   try {
     // This is a way to check if the extension has the activeTab permission
     // We attempt to execute a script, which requires activeTab permission
-    return new Promise((resolve) => {
-      if (!chrome.tabs || !chrome.tabs.query) {
+    return new Promise<boolean>((resolve) => {
+      if (!window.chrome?.tabs || !window.chrome.tabs.query) {
         resolve(false);
         return;
       }
       
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (chrome.runtime.lastError || !tabs || !tabs[0] || !tabs[0].id) {
+      window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (window.chrome?.runtime.lastError || !tabs || !tabs[0] || !tabs[0].id) {
           resolve(false);
           return;
         }
         
         // If we have tabs.captureVisibleTab, we likely have permission
-        if (chrome.tabs.captureVisibleTab) {
+        if (window.chrome?.tabs?.captureVisibleTab) {
           resolve(true);
         } else {
           resolve(false);
@@ -50,11 +51,11 @@ export const hasCapturePermission = async (): Promise<boolean> => {
  * Note: This may not be necessary if the permissions are declared in the manifest
  */
 export const requestCapturePermission = async (): Promise<boolean> => {
-  if (!isChromeExtension() || !chrome.permissions) return false;
+  if (!isChromeExtension() || !window.chrome?.permissions) return false;
   
   try {
-    return new Promise((resolve) => {
-      chrome.permissions.request(
+    return new Promise<boolean>((resolve) => {
+      window.chrome?.permissions?.request(
         { permissions: ["activeTab"] },
         (granted) => {
           resolve(!!granted);

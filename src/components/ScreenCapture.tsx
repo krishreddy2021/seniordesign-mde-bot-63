@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { isChromeExtension, hasCapturePermission, requestCapturePermission } from "@/utils/captureUtils";
 
 interface ScreenCaptureProps {
   onCapturedText: (text: string) => void;
@@ -116,11 +117,11 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
       // Use Chrome extension API for actual screenshot
       try {
         // In a Chrome extension environment
-        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.captureVisibleTab) {
-          chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
-            if (chrome.runtime.lastError) {
-              console.error('Chrome API error:', chrome.runtime.lastError);
-              throw new Error(`Screenshot capture failed: ${chrome.runtime.lastError.message}`);
+        if (isChromeExtension() && window.chrome?.tabs?.captureVisibleTab) {
+          window.chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+            if (window.chrome?.runtime.lastError) {
+              console.error('Chrome API error:', window.chrome.runtime.lastError);
+              throw new Error(`Screenshot capture failed: ${window.chrome.runtime.lastError.message}`);
             }
 
             // Create an image from the capture
@@ -198,34 +199,34 @@ The screenshot has been successfully captured and added to the chat.`;
   };
 
   // Fallback function for development or when permissions are not available
-  const fallbackSimulatedCapture = (left: number, top: number, width: number, height: number) => {
+  const fallbackSimulatedCapture = (captureLeft: number, captureTop: number, captureWidth: number, captureHeight: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = captureWidth;
+    canvas.height = captureHeight;
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
     // Create a colored rectangle to represent a captured area
     ctx.fillStyle = "#f0f4f8";
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, captureWidth, captureHeight);
     
     // Add some text to make it look like content
     ctx.font = "14px Arial";
     ctx.fillStyle = "#000";
     ctx.fillText("Captured Area (Fallback Mode)", 10, 30);
-    ctx.fillText(`Size: ${width}x${height}`, 10, 50);
-    ctx.fillText(`Position: (${left}, ${top})`, 10, 70);
+    ctx.fillText(`Size: ${captureWidth}x${captureHeight}`, 10, 50);
+    ctx.fillText(`Position: (${captureLeft}, ${captureTop})`, 10, 70);
     ctx.fillText("Chrome API unavailable - using simulated capture", 10, 100);
     
     // Draw some shapes to simulate content
     ctx.strokeStyle = "#3366cc";
     ctx.lineWidth = 2;
-    ctx.strokeRect(15, 120, width - 30, height / 3);
+    ctx.strokeRect(15, 120, captureWidth - 30, captureHeight / 3);
     ctx.fillStyle = "#3366cc33";
-    ctx.fillRect(15, 120, width - 30, height / 3);
+    ctx.fillRect(15, 120, captureWidth - 30, captureHeight / 3);
     
     // Get image data
     const imageData = canvas.toDataURL('image/png');
@@ -236,7 +237,7 @@ The screenshot has been successfully captured and added to the chat.`;
     }
     
     // Generate simulated OCR text
-    const text = processSimulatedCapture(left, top, width, height);
+    const text = processSimulatedCapture(captureLeft, captureTop, captureWidth, captureHeight);
     onCapturedText(text);
     
     toast({
@@ -246,7 +247,7 @@ The screenshot has been successfully captured and added to the chat.`;
     });
   };
 
-  const processSimulatedCapture = (left: number, top: number, width: number, height: number): string => {
+  const processSimulatedCapture = (captureLeft: number, captureTop: number, captureWidth: number, captureHeight: number): string => {
     return `[Simulated OCR Result - Chrome API unavailable]
     
 This is fallback content because:
@@ -258,7 +259,7 @@ To enable actual screenshots in the Chrome extension:
 - Ensure "activeTab" permission is in manifest.json
 - Run as an actual Chrome extension
 
-Selected area: (${left},${top}) with size ${width}x${height}`;
+Selected area: (${captureLeft},${captureTop}) with size ${captureWidth}x${captureHeight}`;
   };
 
   return (
