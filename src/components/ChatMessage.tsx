@@ -9,12 +9,14 @@ interface ChatMessageProps {
   content: string;
   role: MessageRole;
   timestamp?: Date;
+  imageUrl?: string;
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({
   content,
   role,
   timestamp = new Date(),
+  imageUrl
 }) => {
   const isUser = role === "user";
   
@@ -40,7 +42,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
           {isUser ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
         </div>
         
-        <div>
+        <div className={cn("max-w-full", isUser ? "mr-1" : "ml-1")}>
+          {imageUrl && (
+            <div className="mb-1 rounded-lg overflow-hidden border border-border">
+              <img 
+                src={imageUrl} 
+                alt="Captured screenshot" 
+                className="max-w-full h-auto object-contain"
+                style={{ maxHeight: "200px" }}
+              />
+            </div>
+          )}
+          
           <div
             className={cn(
               "px-3 py-2 text-sm rounded-2xl",

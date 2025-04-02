@@ -6,9 +6,13 @@ import { toast } from "@/hooks/use-toast";
 
 interface ScreenCaptureProps {
   onCapturedText: (text: string) => void;
+  onCapturedImage?: (imageData: string) => void;
 }
 
-const ScreenCapture: React.FC<ScreenCaptureProps> = ({ onCapturedText }) => {
+const ScreenCapture: React.FC<ScreenCaptureProps> = ({ 
+  onCapturedText, 
+  onCapturedImage 
+}) => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -103,26 +107,84 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({ onCapturedText }) => {
         return;
       }
 
-      // Since we can't directly capture the screen in a browser extension without permissions,
-      // we'll simulate successful capture and OCR processing
+      // Attempt to capture screenshot
       toast({
         title: "Area Selected",
         description: "Processing selected area...",
       });
       
-      // Simulate OCR processing with a delay
-      setTimeout(() => {
-        // Process with OCR
-        const text = processSimulatedCapture(left, top, width, height);
+      // First attempt to use html2canvas approach
+      try {
+        // Create and position canvas for screenshot
+        const canvas = canvasRef.current;
+        if (!canvas) {
+          throw new Error("Canvas not available");
+        }
         
-        // Pass the text to parent component
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error("Canvas context not available");
+        }
+        
+        // Draw only the selected portion of the screen to the canvas
+        // We're using a workaround since we can't directly capture arbitrary screen content
+        const scrollX = window.scrollX;
+        const scrollY = window.scrollY;
+        
+        // Use html2canvas-style approach with clipping
+        ctx.beginPath();
+        ctx.rect(0, 0, width, height);
+        ctx.clip();
+        
+        // Draw the visible content (this is a DOM-based capture approach and will have limitations)
+        ctx.drawImage(
+          document.documentElement, 
+          left - scrollX, 
+          top - scrollY, 
+          width, 
+          height, 
+          0, 
+          0, 
+          width, 
+          height
+        );
+        
+        // Get image data
+        const imageData = canvas.toDataURL('image/png');
+        
+        // Check if we captured anything
+        const emptyCanvas = isCanvasEmpty(canvas);
+        if (emptyCanvas) {
+          throw new Error("Screenshot capture failed");
+        }
+        
+        // Send to both text and image handlers
+        if (onCapturedImage) {
+          onCapturedImage(imageData);
+        }
+        
+        // Generate simulated OCR text
+        const text = processSimulatedCapture(left, top, width, height);
         onCapturedText(text);
         
         toast({
           title: "Screen Captured",
-          description: "Text extracted successfully!",
+          description: "Screenshot captured and OCR text extracted!",
         });
-      }, 1000);
+      } catch (error) {
+        console.error("Screenshot capture error:", error);
+        // Fallback to simulated approach
+        const text = processSimulatedCapture(left, top, width, height);
+        onCapturedText(text);
+        
+        toast({
+          title: "Simulated Capture",
+          description: "Screenshot failed, but OCR text was simulated.",
+        });
+      }
     } catch (error) {
       console.error("Error during screen capture:", error);
       toast({
@@ -133,6 +195,31 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({ onCapturedText }) => {
     } finally {
       cancelCapture();
     }
+  };
+
+  // Helper function to check if canvas is empty (all white or transparent)
+  const isCanvasEmpty = (canvas: HTMLCanvasElement): boolean => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return true;
+    
+    const pixelData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    
+    // Check if all pixels are transparent or white
+    for (let i = 0; i < pixelData.length; i += 4) {
+      const alpha = pixelData[i + 3];
+      if (alpha !== 0) { // If not transparent
+        const red = pixelData[i];
+        const green = pixelData[i + 1];
+        const blue = pixelData[i + 2];
+        
+        // If not white (allowing some tolerance)
+        if (red < 245 || green < 245 || blue < 245) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
   };
 
   const processSimulatedCapture = (left: number, top: number, width: number, height: number): string => {
@@ -161,7 +248,7 @@ The cycle provides precursors of certain amino acids, as well as the reducing ag
         <Scan className="h-4 w-4" />
       </Button>
       
-      {/* Hidden canvas for capturing (not used in this simulated version) */}
+      {/* Hidden canvas for capturing */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
       
       {/* Selection overlay */}

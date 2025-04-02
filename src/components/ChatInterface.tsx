@@ -10,13 +10,14 @@ import { chromeStorage } from "@/utils/chromeStorage";
 import { Chat } from "@/types/chat";
 import { v4 as uuidv4 } from "uuid";
 import { useTheme } from "@/hooks/use-theme";
-import { Moon, Sun, Settings } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Button } from "./ui/button";
 
 export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  imageUrl?: string;
 }
 
 // MCAT tutor system prompt
@@ -67,7 +68,7 @@ const ChatInterface: React.FC = () => {
   };
 
   // Handle captured text from screen
-  const handleCapturedText = (text: string) => {
+  const handleCapturedText = (text: string, imageUrl?: string) => {
     if (text && text.trim()) {
       // If there's no active chat, create one
       if (!activeChat) {
@@ -75,8 +76,14 @@ const ChatInterface: React.FC = () => {
       }
       
       // Add the captured text as a user message with a prefix
-      handleSendMessage(`I've scanned the following text. Please help me understand or analyze it:\n\n${text}`);
+      handleSendMessage(`I've scanned the following text. Please help me understand or analyze it:\n\n${text}`, imageUrl);
     }
+  };
+
+  // Handle captured image
+  const handleCapturedImage = (imageUrl: string) => {
+    // Call handleCapturedText with both text and image
+    handleCapturedText("I've captured this screenshot. Please analyze the content.", imageUrl);
   };
 
   // Load saved chats and API key on mount
@@ -136,7 +143,7 @@ const ChatInterface: React.FC = () => {
     }
   }, [chats, activeChatId]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, imageUrl?: string) => {
     // If no active chat, create one
     if (!activeChat) {
       const newChat = createNewChat();
@@ -149,6 +156,7 @@ const ChatInterface: React.FC = () => {
       role: "user",
       content,
       timestamp: new Date(),
+      imageUrl
     };
     
     // Update chat with user message
@@ -180,10 +188,14 @@ const ChatInterface: React.FC = () => {
         { role: "system", content: SYSTEM_PROMPT },
         ...activeChat ? activeChat.messages.concat(userMessage).map(msg => ({
           role: msg.role,
-          content: msg.content
+          content: msg.imageUrl ? 
+            `[Image attached]\n\n${msg.content}` : 
+            msg.content
         })) : [userMessage].map(msg => ({
           role: msg.role,
-          content: msg.content
+          content: msg.imageUrl ?
+            `[Image attached]\n\n${msg.content}` :
+            msg.content
         }))
       ];
       
@@ -307,7 +319,10 @@ const ChatInterface: React.FC = () => {
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
           showSidebar={showSidebar}
         >
-          <ScreenCapture onCapturedText={handleCapturedText} />
+          <ScreenCapture 
+            onCapturedText={handleCapturedText} 
+            onCapturedImage={handleCapturedImage}
+          />
           <Button 
             variant="ghost" 
             size="icon" 
@@ -315,14 +330,6 @@ const ChatInterface: React.FC = () => {
             className="h-9 w-9 rounded-full"
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setOpenSettings(true)}
-            className="h-9 w-9 rounded-full"
-          >
-            <Settings className="h-4 w-4" />
           </Button>
         </Header>
         
@@ -334,6 +341,7 @@ const ChatInterface: React.FC = () => {
                 role={message.role}
                 content={message.content}
                 timestamp={message.timestamp}
+                imageUrl={message.imageUrl}
               />
             ))}
             {isLoading && (
