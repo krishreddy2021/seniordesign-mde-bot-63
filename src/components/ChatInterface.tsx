@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
@@ -300,7 +301,7 @@ const ChatInterface: React.FC = () => {
   };
 
   return (
-    <div className="flex h-[500px] w-[350px] max-h-[500px] bg-background shadow-lg rounded-lg overflow-hidden">
+    <div className="flex h-full w-full bg-background shadow-lg rounded-lg overflow-hidden">
       {showSidebar && (
         <div className="w-[130px] min-w-[130px] h-full">
           <ChatList
@@ -313,7 +314,7 @@ const ChatInterface: React.FC = () => {
         </div>
       )}
       
-      <div className={`flex flex-col ${showSidebar ? 'w-[220px]' : 'w-full'}`}>
+      <div className={`flex flex-col ${showSidebar ? 'flex-1' : 'w-full'}`}>
         <Header 
           onOpenSettings={() => setOpenSettings(true)} 
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
