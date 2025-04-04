@@ -30,6 +30,9 @@ interface Window {
       onMessage: {
         addListener: (callback: (message: any, sender: any, sendResponse: any) => void) => void;
       };
+      onInstalled?: {
+        addListener: (callback: (details: any) => void) => void;
+      };
     };
     permissions?: {
       request: (permissions: any, callback: (granted: boolean) => void) => void;
@@ -49,6 +52,17 @@ interface Window {
     };
     action?: {
       onClicked: {
+        addListener: (callback: () => void) => void;
+      };
+    };
+    sidePanel?: {
+      open: (options?: { windowId?: number }) => Promise<void>;
+      close: (options?: { windowId?: number }) => Promise<void>;
+      setPanelBehavior: (behavior: { openPanelOnActionClick?: boolean }) => Promise<void>;
+      onOpened: {
+        addListener: (callback: () => void) => void;
+      };
+      onClosed: {
         addListener: (callback: () => void) => void;
       };
     };
