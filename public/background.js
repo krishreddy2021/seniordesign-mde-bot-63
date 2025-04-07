@@ -2,7 +2,8 @@
 // Background script for handling extension commands and side panel
 
 // More robust check if we're in a Chrome extension environment
-const isExtensionEnvironment = typeof chrome !== 'undefined' && 
+const isExtensionEnvironment = typeof window !== 'undefined' && 
+  typeof chrome !== 'undefined' && 
   chrome.runtime !== undefined && 
   chrome.runtime.id !== undefined;
 

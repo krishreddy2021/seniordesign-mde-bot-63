@@ -3,18 +3,19 @@
 const localStorageStore: Record<string, any> = {};
 
 // More robust check if running in a Chrome extension environment
-const isExtensionEnvironment = typeof chrome !== 'undefined' && 
-  chrome.runtime !== undefined && 
-  chrome.runtime.id !== undefined;
+const isExtensionEnvironment = typeof window !== 'undefined' && 
+  typeof window.chrome !== 'undefined' && 
+  window.chrome.runtime !== undefined && 
+  window.chrome.runtime.id !== undefined;
 
 // Storage interface that matches Chrome's storage API
 export const chromeStorage = {
   sync: {
     get: (keys: string[], callback: (result: Record<string, any>) => void) => {
-      if (isExtensionEnvironment && chrome.storage && chrome.storage.sync) {
+      if (isExtensionEnvironment && window.chrome?.storage && window.chrome.storage.sync) {
         try {
           // Use actual Chrome storage in extension environment
-          chrome.storage.sync.get(keys, callback);
+          window.chrome.storage.sync.get(keys, callback);
         } catch (error) {
           console.error('Error accessing Chrome storage:', error);
           // Fallback to local storage if Chrome API fails
@@ -27,10 +28,10 @@ export const chromeStorage = {
       }
     },
     set: (items: Record<string, any>, callback?: () => void) => {
-      if (isExtensionEnvironment && chrome.storage && chrome.storage.sync) {
+      if (isExtensionEnvironment && window.chrome?.storage && window.chrome.storage.sync) {
         try {
           // Use actual Chrome storage in extension environment
-          chrome.storage.sync.set(items, callback);
+          window.chrome.storage.sync.set(items, callback);
         } catch (error) {
           console.error('Error accessing Chrome storage:', error);
           // Fallback to local storage if Chrome API fails
@@ -71,5 +72,3 @@ function saveToLocalStorage(items: Record<string, any>, callback?: () => void) {
     callback();
   }
 }
-
-// We don't need to declare the global interface here as it's already in vite-env.d.ts
