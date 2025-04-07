@@ -5,8 +5,8 @@ const localStorageStore: Record<string, any> = {};
 // More robust check if running in a Chrome extension environment
 const isExtensionEnvironment = typeof window !== 'undefined' && 
   typeof window.chrome !== 'undefined' && 
-  window.chrome.runtime !== undefined && 
-  window.chrome.runtime.id !== undefined;
+  typeof window.chrome.runtime !== 'undefined' && 
+  typeof window.chrome.runtime.id !== 'undefined';
 
 // Storage interface that matches Chrome's storage API
 export const chromeStorage = {
