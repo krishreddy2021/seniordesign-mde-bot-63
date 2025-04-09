@@ -4,18 +4,18 @@ const localStorageStore: Record<string, any> = {};
 
 // More robust check if running in a Chrome extension environment
 const isExtensionEnvironment = typeof window !== 'undefined' && 
-  typeof window.chrome !== 'undefined' && 
-  typeof window.chrome.runtime !== 'undefined' && 
-  typeof window.chrome.runtime.id !== 'undefined';
+  typeof chrome !== 'undefined' && 
+  chrome.runtime !== undefined && 
+  chrome.runtime.id !== undefined;
 
 // Storage interface that matches Chrome's storage API
 export const chromeStorage = {
   sync: {
     get: (keys: string[], callback: (result: Record<string, any>) => void) => {
-      if (isExtensionEnvironment && window.chrome?.storage && window.chrome.storage.sync) {
+      if (isExtensionEnvironment && chrome?.storage && chrome.storage.sync) {
         try {
           // Use actual Chrome storage in extension environment
-          window.chrome.storage.sync.get(keys, callback);
+          chrome.storage.sync.get(keys, callback);
         } catch (error) {
           console.error('Error accessing Chrome storage:', error);
           // Fallback to local storage if Chrome API fails
@@ -28,10 +28,10 @@ export const chromeStorage = {
       }
     },
     set: (items: Record<string, any>, callback?: () => void) => {
-      if (isExtensionEnvironment && window.chrome?.storage && window.chrome.storage.sync) {
+      if (isExtensionEnvironment && chrome?.storage && chrome.storage.sync) {
         try {
           // Use actual Chrome storage in extension environment
-          window.chrome.storage.sync.set(items, callback);
+          chrome.storage.sync.set(items, callback);
         } catch (error) {
           console.error('Error accessing Chrome storage:', error);
           // Fallback to local storage if Chrome API fails
