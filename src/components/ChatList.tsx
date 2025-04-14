@@ -22,19 +22,19 @@ const ChatList: React.FC<ChatListProps> = ({
 }) => {
   return (
     <div className="h-full flex flex-col bg-background border-r border-border">
-      <div className="p-2 border-b border-border">
+      <div className="p-1 border-b border-border">
         <Button
           onClick={onNewChat}
-          className="w-full justify-start gap-2"
+          className="w-full justify-start gap-1 h-8 text-sm px-2"
           variant="outline"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4 mr-1" />
           New Chat
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto p-1 space-y-1">
         {chats.length === 0 ? (
-          <div className="text-center text-muted-foreground py-4 text-sm">
+          <div className="text-center text-muted-foreground py-2 text-xs">
             No chats yet. Start a new conversation!
           </div>
         ) : (
