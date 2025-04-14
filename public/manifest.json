@@ -1,9 +1,9 @@
 
 {
   "manifest_version": 3,
-  "name": "AI Chatbot Assistant",
+  "name": "MCAT Tutor Assistant",
   "version": "1.0.0",
-  "description": "AI chatbot assistant that helps you with your questions",
+  "description": "AI MCAT tutor assistant that helps you prepare for the MCAT exam",
   "action": {
     "default_icon": {
       "16": "icon16.png",
@@ -17,7 +17,7 @@
     "128": "icon128.png"
   },
   "permissions": ["storage", "activeTab", "sidePanel"],
-  "host_permissions": ["https://api.openai.com/*"],
+  "host_permissions": ["https://generativelanguage.googleapis.com/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -30,14 +30,14 @@
         "default": "Ctrl+Shift+M",
         "mac": "Command+Shift+M"
       },
-      "description": "Open the chatbot extension"
+      "description": "Open the MCAT tutor assistant"
     },
     "toggle_extension": {
       "suggested_key": {
         "default": "Alt+M",
         "mac": "Alt+M"
       },
-      "description": "Toggle the chatbot extension"
+      "description": "Toggle the MCAT tutor assistant"
     }
   }
 }

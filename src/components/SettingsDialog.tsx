@@ -19,9 +19,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
   useEffect(() => {
     // Load saved API key when dialog opens
     if (open) {
-      chromeStorage.sync.get(["openaiApiKey"], (result) => {
-        if (result.openaiApiKey) {
-          setApiKey(result.openaiApiKey);
+      chromeStorage.sync.get(["geminiApiKey"], (result) => {
+        if (result.geminiApiKey) {
+          setApiKey(result.geminiApiKey);
         }
       });
     }
@@ -29,10 +29,10 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
 
   const handleSaveSettings = () => {
     // Save API key to Chrome storage
-    chromeStorage.sync.set({ openaiApiKey: apiKey }, () => {
+    chromeStorage.sync.set({ geminiApiKey: apiKey }, () => {
       toast({
         title: "Settings saved",
-        description: "Your API key has been saved.",
+        description: "Your Gemini API key has been saved.",
       });
       onOpenChange(false);
     });
@@ -44,7 +44,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Enter your OpenAI API key to use the chatbot.
+            Enter your Gemini API key to use the chatbot.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -57,7 +57,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
+              placeholder="AIza..."
               className="col-span-3"
             />
           </div>

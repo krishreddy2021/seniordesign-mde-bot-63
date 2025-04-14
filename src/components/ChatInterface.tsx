@@ -89,16 +89,16 @@ const ChatInterface: React.FC = () => {
 
   // Load saved chats and API key on mount
   useEffect(() => {
-    chromeStorage.sync.get(["openaiApiKey", "chats", "activeChatId"], (result) => {
+    chromeStorage.sync.get(["geminiApiKey", "chats", "activeChatId"], (result) => {
       // Load API key
-      if (result.openaiApiKey) {
-        setApiKey(result.openaiApiKey);
+      if (result.geminiApiKey) {
+        setApiKey(result.geminiApiKey);
       } else {
         // If no API key is found, open settings dialog
         setOpenSettings(true);
         toast({
           title: "API Key Required",
-          description: "Please enter your OpenAI API key to use the chatbot.",
+          description: "Please enter your Gemini API key to use the chatbot.",
         });
       }
       
@@ -185,32 +185,42 @@ const ChatInterface: React.FC = () => {
       }
       
       // Prepare messages array for the API
-      const apiMessages = [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...activeChat ? activeChat.messages.concat(userMessage).map(msg => ({
-          role: msg.role,
-          content: msg.imageUrl ? 
-            `[Image attached]\n\n${msg.content}` : 
-            msg.content
-        })) : [userMessage].map(msg => ({
-          role: msg.role,
-          content: msg.imageUrl ?
-            `[Image attached]\n\n${msg.content}` :
-            msg.content
-        }))
-      ];
+      const geminiMessages = activeChat ? 
+        activeChat.messages.concat(userMessage).map(msg => ({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.imageUrl ? `[Image attached]\n\n${msg.content}` : msg.content }]
+        })) : 
+        [{ 
+          role: 'user', 
+          parts: [{ text: userMessage.imageUrl ? `[Image attached]\n\n${userMessage.content}` : userMessage.content }] 
+        }];
       
-      // Call OpenAI API
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Include system prompt for Gemini
+      const systemMessage = {
+        role: 'model',
+        parts: [{ text: SYSTEM_PROMPT }]
+      };
+      
+      // Add system message at the beginning if it doesn't exist
+      if (!geminiMessages.some(msg => msg.role === 'model' && msg.parts[0].text.includes(SYSTEM_PROMPT))) {
+        geminiMessages.unshift(systemMessage);
+      }
+      
+      // Call Gemini API
+      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`, 
+          'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', // Using a modern model
-          messages: apiMessages,
-          temperature: 0.7,
+          contents: geminiMessages,
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.95,
+            topK: 40,
+            maxOutputTokens: 8192,
+          },
         }),
       });
       
@@ -220,7 +230,7 @@ const ChatInterface: React.FC = () => {
       }
       
       const data = await response.json();
-      const aiResponse = data.choices[0]?.message?.content || "Sorry, I couldn't generate a response.";
+      const aiResponse = data.candidates[0]?.content?.parts[0]?.text || "Sorry, I couldn't generate a response.";
       
       // Add AI response
       const aiMessage: Message = {
@@ -243,7 +253,7 @@ const ChatInterface: React.FC = () => {
         });
       });
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+      console.error('Error calling Gemini API:', error);
       
       let errorMessage = "Sorry, I encountered an error while processing your request. Please try again.";
       
@@ -300,10 +310,11 @@ const ChatInterface: React.FC = () => {
     });
   };
 
+  // Optimize UI for Chrome extension (compact layout)
   return (
-    <div className="flex h-full w-full bg-background shadow-lg rounded-lg overflow-hidden">
+    <div className="flex h-full w-full bg-background shadow-lg overflow-hidden">
       {showSidebar && (
-        <div className="w-[130px] min-w-[130px] h-full">
+        <div className="w-[100px] min-w-[100px] h-full border-r border-border">
           <ChatList
             chats={chats}
             activeChatId={activeChatId}
@@ -328,13 +339,13 @@ const ChatInterface: React.FC = () => {
             variant="ghost" 
             size="icon" 
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="h-9 w-9 rounded-full"
+            className="h-8 w-8 rounded-full"
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
         </Header>
         
-        <div className="flex-1 overflow-y-auto p-3 chat-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 chat-scrollbar">
           <div className="space-y-2">
             {activeChat && activeChat.messages.map((message, index) => (
               <ChatMessage
@@ -367,9 +378,9 @@ const ChatInterface: React.FC = () => {
             setOpenSettings(open);
             if (!open) {
               // Refresh API key when settings dialog is closed
-              chromeStorage.sync.get(["openaiApiKey"], (result) => {
-                if (result.openaiApiKey) {
-                  setApiKey(result.openaiApiKey);
+              chromeStorage.sync.get(["geminiApiKey"], (result) => {
+                if (result.geminiApiKey) {
+                  setApiKey(result.geminiApiKey);
                 }
               });
             }
