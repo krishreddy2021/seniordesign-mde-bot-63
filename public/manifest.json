@@ -28,12 +28,13 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "run_at": "document_end"
+      "run_at": "document_end",
+      "all_frames": false
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["index.html", "*.js", "*.css"],
+      "resources": ["index.html", "*.js", "*.css", "*.png"],
       "matches": ["<all_urls>"]
     }
   ],

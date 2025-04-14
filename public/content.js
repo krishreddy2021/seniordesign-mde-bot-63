@@ -34,91 +34,82 @@ function createExtensionFrame() {
   extensionFrame.src = chrome.runtime.getURL('index.html');
   extensionFrame.id = 'mcat-tutor-assistant-frame';
   
-  // Style the iframe
+  // Style the iframe to better fit within a tab
   extensionFrame.style.position = 'fixed';
-  extensionFrame.style.top = '20px';
-  extensionFrame.style.right = '20px';
-  extensionFrame.style.width = '400px';
-  extensionFrame.style.height = '600px';
-  extensionFrame.style.border = '1px solid #ccc';
-  extensionFrame.style.borderRadius = '8px';
-  extensionFrame.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+  extensionFrame.style.top = '0';
+  extensionFrame.style.right = '0';
+  extensionFrame.style.width = '375px';  // Narrower width
+  extensionFrame.style.height = '100vh'; // Full height
+  extensionFrame.style.border = 'none';  // No border for cleaner integration
+  extensionFrame.style.borderLeft = '1px solid #ccc'; // Only left border
+  extensionFrame.style.borderRadius = '0'; // No border radius
+  extensionFrame.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.1)';
   extensionFrame.style.zIndex = '2147483647'; // Maximum z-index
   extensionFrame.style.backgroundColor = '#ffffff';
   
   // Add the iframe to the page
   document.body.appendChild(extensionFrame);
   
-  // Make the iframe draggable
-  makeFrameDraggable(extensionFrame);
+  // Make the iframe resizable instead of draggable
+  makeFrameResizable(extensionFrame);
 }
 
-// Make the iframe draggable
-function makeFrameDraggable(frame) {
-  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+// Make the iframe resizable
+function makeFrameResizable(frame) {
+  // Create a resizer element
+  const resizer = document.createElement('div');
+  resizer.id = 'mcat-tutor-resizer';
+  resizer.style.position = 'absolute';
+  resizer.style.left = '0';
+  resizer.style.top = '0';
+  resizer.style.bottom = '0';
+  resizer.style.width = '4px';
+  resizer.style.cursor = 'col-resize';
+  resizer.style.zIndex = '2147483648';
   
-  // Create a draggable header
-  const header = document.createElement('div');
-  header.id = 'mcat-tutor-header';
-  header.style.position = 'absolute';
-  header.style.top = '0';
-  header.style.left = '0';
-  header.style.right = '0';
-  header.style.height = '30px';
-  header.style.backgroundColor = 'transparent';
-  header.style.cursor = 'move';
-  header.style.zIndex = '2147483648'; // Above the iframe
+  document.body.appendChild(resizer);
   
-  document.body.appendChild(header);
-  
-  // Position the header over the iframe
-  function updateHeaderPosition() {
+  // Position the resizer
+  function updateResizerPosition() {
     const rect = frame.getBoundingClientRect();
-    header.style.top = rect.top + 'px';
-    header.style.left = rect.left + 'px';
-    header.style.width = rect.width + 'px';
+    resizer.style.left = (rect.left - 2) + 'px';
+    resizer.style.top = rect.top + 'px';
+    resizer.style.height = rect.height + 'px';
   }
   
-  updateHeaderPosition();
+  updateResizerPosition();
   
-  // Mouse events for dragging
-  header.onmousedown = dragMouseDown;
+  // Mouse events for resizing
+  resizer.addEventListener('mousedown', initResize, false);
   
-  function dragMouseDown(e) {
-    e = e || window.event;
-    e.preventDefault();
-    
-    // Get the mouse cursor position at startup
-    pos3 = e.clientX;
-    pos4 = e.clientY;
-    
-    document.onmouseup = closeDragElement;
-    document.onmousemove = elementDrag;
+  function initResize(e) {
+    window.addEventListener('mousemove', resize, false);
+    window.addEventListener('mouseup', stopResize, false);
   }
   
-  function elementDrag(e) {
-    e = e || window.event;
-    e.preventDefault();
+  function resize(e) {
+    // Calculate new width based on mouse position
+    const newWidth = window.innerWidth - e.clientX;
     
-    // Calculate the new cursor position
-    pos1 = pos3 - e.clientX;
-    pos2 = pos4 - e.clientY;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
+    // Constrain width between min and max values
+    const minWidth = 300;
+    const maxWidth = window.innerWidth * 0.5;
+    const constrainedWidth = Math.min(Math.max(newWidth, minWidth), maxWidth);
     
-    // Set the element's new position
-    frame.style.top = (frame.offsetTop - pos2) + 'px';
-    frame.style.left = (frame.offsetLeft - pos1) + 'px';
+    // Apply new width
+    frame.style.width = constrainedWidth + 'px';
     
-    // Update header position
-    updateHeaderPosition();
+    // Update resizer position
+    updateResizerPosition();
   }
   
-  function closeDragElement() {
-    // Stop moving when mouse button is released
-    document.onmouseup = null;
-    document.onmousemove = null;
+  function stopResize() {
+    window.removeEventListener('mousemove', resize, false);
+    window.removeEventListener('mouseup', stopResize, false);
   }
+  
+  // Update position when window is resized
+  window.addEventListener('resize', updateResizerPosition);
 }
 
 // Initialize on page load if needed

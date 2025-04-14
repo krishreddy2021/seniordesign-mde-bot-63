@@ -6,7 +6,11 @@ const Index: React.FC = () => {
   // Handle extension-specific behavior
   useEffect(() => {
     // Set up message listener for communication with content script
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    const isExtensionEnvironment = typeof window !== 'undefined' && 
+      window.chrome !== undefined && 
+      window.chrome.runtime !== undefined;
+      
+    if (isExtensionEnvironment && window.chrome.runtime && window.chrome.runtime.onMessage) {
       const messageListener = (message: any, sender: any, sendResponse: any) => {
         if (message.action === 'get_state') {
           sendResponse({ status: 'active' });
@@ -14,11 +18,11 @@ const Index: React.FC = () => {
         }
       };
       
-      chrome.runtime.onMessage.addListener(messageListener);
+      window.chrome.runtime.onMessage.addListener(messageListener);
       
       // Clean up listener on unmount
       return () => {
-        chrome.runtime.onMessage.removeListener(messageListener);
+        window.chrome.runtime.onMessage.removeListener(messageListener);
       };
     }
   }, []);

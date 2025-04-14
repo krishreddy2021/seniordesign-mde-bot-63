@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -114,6 +115,8 @@
     overflow: hidden;
     max-width: 100%;
     max-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -148,9 +151,9 @@
 
 /* Chrome extension specific styles */
 .chrome-extension-frame {
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 /* Make inputs and controls more compact for extension UI */
@@ -160,6 +163,29 @@
 
 .extension-container button {
   min-height: unset;
+}
+
+/* Compact layout for chrome extension */
+@media (max-width: 500px) {
+  .extension-container {
+    /* More compact sidebar */
+    --sidebar-width: 60px;
+  }
+  
+  /* Smaller text in compact mode */
+  .extension-container {
+    font-size: 0.9rem;
+  }
+  
+  /* Hide sidebar labels in compact mode */
+  .extension-container .sidebar-label {
+    display: none;
+  }
+  
+  /* Reduce padding in compact mode */
+  .extension-container .p-4 {
+    padding: 0.75rem;
+  }
 }
 
 /* Ensure UI stays in view */
