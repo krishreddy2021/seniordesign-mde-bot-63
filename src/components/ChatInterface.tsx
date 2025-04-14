@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
@@ -11,8 +10,9 @@ import { chromeStorage } from "@/utils/chromeStorage";
 import { Chat } from "@/types/chat";
 import { v4 as uuidv4 } from "uuid";
 import { useTheme } from "@/hooks/use-theme";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Upload } from "lucide-react";
 import { Button } from "./ui/button";
+import ImageUploader from "./ImageUploader";
 
 export interface Message {
   role: "user" | "assistant";
@@ -31,11 +31,12 @@ const ChatInterface: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [openSettings, setOpenSettings] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [showImageUploader, setShowImageUploader] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
-  // Get active chat
   const activeChat = chats.find((chat) => chat.id === activeChatId);
   const activeMessages = activeChat?.messages || [];
 
@@ -47,7 +48,6 @@ const ChatInterface: React.FC = () => {
     scrollToBottom();
   }, [activeMessages]);
 
-  // Create a new chat
   const createNewChat = () => {
     const newChat: Chat = {
       id: uuidv4(),
@@ -68,45 +68,57 @@ const ChatInterface: React.FC = () => {
     return newChat;
   };
 
-  // Handle captured text from screen
   const handleCapturedText = (text: string, imageUrl?: string) => {
     if (text && text.trim()) {
-      // If there's no active chat, create one
       if (!activeChat) {
         createNewChat();
       }
-      
-      // Add the captured text as a user message with a prefix
       handleSendMessage(`I've scanned the following text. Please help me understand or analyze it:\n\n${text}`, imageUrl);
     }
   };
 
-  // Handle captured image
   const handleCapturedImage = (imageUrl: string) => {
-    // Call handleCapturedText with both text and image
     handleCapturedText("I've captured this screenshot. Please analyze the content.", imageUrl);
   };
 
-  // Load saved chats and API key on mount
+  const handleImageUpload = (imageDataUrl: string) => {
+    setUploadedImage(imageDataUrl);
+    setShowImageUploader(false);
+    toast({
+      title: "Image uploaded",
+      description: "You can now send a message with this image.",
+    });
+  };
+
+  const handleSendWithImage = (content: string) => {
+    if (uploadedImage) {
+      handleSendMessage(content, uploadedImage);
+      setUploadedImage(null);
+    } else {
+      handleSendMessage(content);
+    }
+  };
+
+  const handleCancelUpload = () => {
+    setUploadedImage(null);
+    setShowImageUploader(false);
+  };
+
   useEffect(() => {
     chromeStorage.sync.get(["geminiApiKey", "chats", "activeChatId"], (result) => {
-      // Load API key
       if (result.geminiApiKey) {
         setApiKey(result.geminiApiKey);
       } else {
-        // If no API key is found, open settings dialog
         setOpenSettings(true);
         toast({
           title: "API Key Required",
           description: "Please enter your Gemini API key to use the chatbot.",
         });
       }
-      
-      // Load chats if they exist
+
       if (result.chats) {
         try {
           const savedChats = JSON.parse(result.chats) as Chat[];
-          // Convert string timestamps back to Date objects
           const chatsWithDates = savedChats.map(chat => ({
             ...chat,
             createdAt: new Date(chat.createdAt),
@@ -117,8 +129,7 @@ const ChatInterface: React.FC = () => {
             }))
           }));
           setChats(chatsWithDates);
-          
-          // Set active chat
+
           if (result.activeChatId && chatsWithDates.some(chat => chat.id === result.activeChatId)) {
             setActiveChatId(result.activeChatId);
           } else if (chatsWithDates.length > 0) {
@@ -128,13 +139,11 @@ const ChatInterface: React.FC = () => {
           console.error("Error parsing saved chats:", error);
         }
       } else {
-        // Create initial chat if no chats exist
         createNewChat();
       }
     });
   }, []);
 
-  // Save chats whenever they change
   useEffect(() => {
     if (chats.length > 0) {
       chromeStorage.sync.set({ 
@@ -145,22 +154,19 @@ const ChatInterface: React.FC = () => {
   }, [chats, activeChatId]);
 
   const handleSendMessage = async (content: string, imageUrl?: string) => {
-    // If no active chat, create one
     if (!activeChat) {
       const newChat = createNewChat();
       setChats((prev) => [...prev]);
       setActiveChatId(newChat.id);
     }
-    
-    // Add user message
+
     const userMessage: Message = {
       role: "user",
       content,
       timestamp: new Date(),
       imageUrl
     };
-    
-    // Update chat with user message
+
     setChats(prevChats => {
       return prevChats.map(chat => {
         if (chat.id === activeChatId) {
@@ -168,23 +174,20 @@ const ChatInterface: React.FC = () => {
             ...chat,
             messages: [...chat.messages, userMessage],
             updatedAt: new Date(),
-            // Set title based on first message if not already set
             title: chat.title || (content.length > 20 ? content.substring(0, 20) + '...' : content)
           };
         }
         return chat;
       });
     });
-    
+
     setIsLoading(true);
-    
+
     try {
-      // Check if API key exists
       if (!apiKey) {
         throw new Error("No API key provided");
       }
-      
-      // Prepare messages array for the API
+
       const geminiMessages = activeChat ? 
         activeChat.messages.concat(userMessage).map(msg => ({
           role: msg.role === 'user' ? 'user' : 'model',
@@ -194,19 +197,16 @@ const ChatInterface: React.FC = () => {
           role: 'user', 
           parts: [{ text: userMessage.imageUrl ? `[Image attached]\n\n${userMessage.content}` : userMessage.content }] 
         }];
-      
-      // Include system prompt for Gemini
+
       const systemMessage = {
         role: 'model',
         parts: [{ text: SYSTEM_PROMPT }]
       };
-      
-      // Add system message at the beginning if it doesn't exist
+
       if (!geminiMessages.some(msg => msg.role === 'model' && msg.parts[0].text.includes(SYSTEM_PROMPT))) {
         geminiMessages.unshift(systemMessage);
       }
-      
-      // Call Gemini API
+
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', {
         method: 'POST',
         headers: {
@@ -223,23 +223,21 @@ const ChatInterface: React.FC = () => {
           },
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(`API request failed: ${errorData.error?.message || response.statusText}`);
       }
-      
+
       const data = await response.json();
       const aiResponse = data.candidates[0]?.content?.parts[0]?.text || "Sorry, I couldn't generate a response.";
-      
-      // Add AI response
+
       const aiMessage: Message = {
         role: "assistant",
         content: aiResponse,
         timestamp: new Date(),
       };
-      
-      // Update chat with AI response
+
       setChats(prevChats => {
         return prevChats.map(chat => {
           if (chat.id === activeChatId) {
@@ -254,9 +252,9 @@ const ChatInterface: React.FC = () => {
       });
     } catch (error) {
       console.error('Error calling Gemini API:', error);
-      
+
       let errorMessage = "Sorry, I encountered an error while processing your request. Please try again.";
-      
+
       if (error instanceof Error) {
         if (error.message.includes("API key")) {
           errorMessage = "API key is missing or invalid. Please update it in settings.";
@@ -265,15 +263,13 @@ const ChatInterface: React.FC = () => {
           errorMessage = error.message;
         }
       }
-      
-      // Add error message
+
       const errorMsg: Message = {
         role: "assistant",
         content: errorMessage,
         timestamp: new Date(),
       };
-      
-      // Update chat with error message
+
       setChats(prevChats => {
         return prevChats.map(chat => {
           if (chat.id === activeChatId) {
@@ -294,23 +290,20 @@ const ChatInterface: React.FC = () => {
   const handleDeleteChat = (chatId: string) => {
     setChats(prevChats => {
       const newChats = prevChats.filter(chat => chat.id !== chatId);
-      
-      // If deleting active chat, set new active chat
+
       if (chatId === activeChatId) {
         if (newChats.length > 0) {
           setActiveChatId(newChats[0].id);
         } else {
           setActiveChatId(null);
-          // Create a new chat if we're deleting the last one
           setTimeout(() => createNewChat(), 0);
         }
       }
-      
+
       return newChats;
     });
   };
 
-  // Optimize UI for Chrome extension (compact layout)
   return (
     <div className="flex h-full w-full bg-background shadow-lg overflow-hidden">
       {showSidebar && (
@@ -324,17 +317,28 @@ const ChatInterface: React.FC = () => {
           />
         </div>
       )}
-      
+
       <div className={`flex flex-col ${showSidebar ? 'flex-1' : 'w-full'}`}>
         <Header 
           onOpenSettings={() => setOpenSettings(true)} 
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
           showSidebar={showSidebar}
         >
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 rounded-full"
+            onClick={() => setShowImageUploader(true)}
+            title="Upload image"
+          >
+            <Upload className="h-4 w-4" />
+          </Button>
+          
           <ScreenCapture 
             onCapturedText={handleCapturedText} 
             onCapturedImage={handleCapturedImage}
           />
+          
           <Button 
             variant="ghost" 
             size="icon" 
@@ -366,18 +370,42 @@ const ChatInterface: React.FC = () => {
                 <span className="text-xs">Thinking...</span>
               </div>
             )}
+            {uploadedImage && (
+              <div className="flex flex-col space-y-2 items-end">
+                <div className="rounded-md overflow-hidden border border-border max-w-[300px]">
+                  <img 
+                    src={uploadedImage} 
+                    alt="Uploaded" 
+                    className="max-w-full h-auto object-contain"
+                  />
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleCancelUpload}
+                    className="text-xs"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         </div>
         
-        <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+        <ChatInput 
+          onSendMessage={handleSendWithImage}
+          disabled={isLoading} 
+          imageAttached={!!uploadedImage}
+        />
         
         <SettingsDialog 
           open={openSettings} 
           onOpenChange={(open) => {
             setOpenSettings(open);
             if (!open) {
-              // Refresh API key when settings dialog is closed
               chromeStorage.sync.get(["geminiApiKey"], (result) => {
                 if (result.geminiApiKey) {
                   setApiKey(result.geminiApiKey);
@@ -385,6 +413,12 @@ const ChatInterface: React.FC = () => {
               });
             }
           }} 
+        />
+        
+        <ImageUploader 
+          open={showImageUploader}
+          onOpenChange={setShowImageUploader}
+          onImageUpload={handleImageUpload}
         />
       </div>
     </div>
