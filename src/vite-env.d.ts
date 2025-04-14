@@ -29,6 +29,7 @@ interface Window {
       sendMessage: (message: any, callback?: (response: any) => void) => void;
       onMessage: {
         addListener: (callback: (message: any, sender: any, sendResponse: any) => void) => void;
+        removeListener: (callback: (message: any, sender: any, sendResponse: any) => void) => void;
       };
       onInstalled?: {
         addListener: (callback: (details: any) => void) => void;

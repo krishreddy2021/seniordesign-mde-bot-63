@@ -22,7 +22,15 @@ const Index: React.FC = () => {
       
       // Clean up listener on unmount
       return () => {
-        window.chrome.runtime.onMessage.removeListener(messageListener);
+        // Use try-catch to safely handle the removeListener call
+        try {
+          if (window.chrome.runtime.onMessage && 'removeListener' in window.chrome.runtime.onMessage) {
+            // Cast to any to bypass TypeScript constraint since we checked it exists
+            (window.chrome.runtime.onMessage as any).removeListener(messageListener);
+          }
+        } catch (error) {
+          console.error("Failed to remove message listener:", error);
+        }
       };
     }
   }, []);
