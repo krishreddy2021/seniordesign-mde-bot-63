@@ -1,14 +1,15 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
+import { Send, Image } from "lucide-react";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
+  imageAttached?: boolean;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false, imageAttached = false }) => {
   const [message, setMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,7 +29,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type a message..."
+          placeholder={imageAttached ? "Describe the image..." : "Type a message..."}
           className="w-full p-2 pr-8 min-h-[40px] max-h-[80px] text-xs resize-none rounded-lg border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -38,6 +39,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
           }}
           disabled={disabled}
         />
+        {imageAttached && (
+          <div className="absolute right-2 top-2">
+            <Image className="h-4 w-4 text-primary" />
+          </div>
+        )}
       </div>
       <Button 
         type="submit" 
