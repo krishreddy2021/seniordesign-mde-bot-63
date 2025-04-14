@@ -1,71 +1,97 @@
 
 // Background script for handling extension commands and side panel
 
-// More robust check if we're in a Chrome extension environment
+// Check if we're in a Chrome extension environment
 const isExtensionEnvironment = typeof chrome !== 'undefined' && 
   chrome.runtime !== undefined && 
   chrome.runtime.id !== undefined;
 
-// Track if the side panel is currently open
-let isSidePanelOpen = false;
+// Track if the assistant is currently visible
+let isAssistantVisible = false;
 
 // Only set up listeners if we're in a Chrome extension environment
 if (isExtensionEnvironment) {
-  // Check if specific APIs are available before using them
+  // Listen for keyboard commands
   if (chrome.commands && chrome.commands.onCommand) {
-    // Listen for keyboard commands
     chrome.commands.onCommand.addListener((command) => {
       if (command === 'toggle_extension') {
-        if (isSidePanelOpen && chrome.sidePanel && chrome.sidePanel.close) {
-          // Close the side panel if it's open
-          chrome.sidePanel.close();
-          isSidePanelOpen = false;
-        } else if (chrome.sidePanel && chrome.sidePanel.open) {
-          // Open the side panel
-          chrome.sidePanel.open();
-          isSidePanelOpen = true;
-        }
+        toggleAssistant();
       }
     });
   }
-
-  // Check if action API is available
+  
+  // Listen for clicks on the extension icon
   if (chrome.action && chrome.action.onClicked) {
-    // Listen for clicks on the extension icon
-    chrome.action.onClicked.addListener(() => {
-      if (chrome.sidePanel && chrome.sidePanel.open) {
-        chrome.sidePanel.open();
-        isSidePanelOpen = true;
-      }
+    chrome.action.onClicked.addListener((tab) => {
+      toggleAssistant(tab);
     });
   }
-
-  // Check if runtime and sidePanel APIs are available
-  if (chrome.runtime && chrome.runtime.onInstalled && chrome.sidePanel) {
-    // Set up the side panel to be available on PDF files
+  
+  // Initialize on installation
+  if (chrome.runtime && chrome.runtime.onInstalled) {
     chrome.runtime.onInstalled.addListener(() => {
-      // Set which sites the side panel is enabled on
-      if (chrome.sidePanel.setPanelBehavior) {
+      console.log('MCAT Tutor Assistant installed');
+      
+      // Set up side panel behavior if available
+      if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
         chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
           .catch((error) => console.error('Side panel behavior error:', error));
       }
     });
   }
+}
 
-  // Track side panel state
-  if (chrome.sidePanel) {
-    if (chrome.sidePanel.onOpened) {
-      chrome.sidePanel.onOpened.addListener(() => {
-        isSidePanelOpen = true;
-      });
-    }
-
-    if (chrome.sidePanel.onClosed) {
-      chrome.sidePanel.onClosed.addListener(() => {
-        isSidePanelOpen = false;
-      });
-    }
+// Function to toggle the assistant visibility
+function toggleAssistant(tab) {
+  if (!tab && chrome.tabs) {
+    // Get the active tab if not provided
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs.length > 0) {
+        toggleAssistantInTab(tabs[0]);
+      }
+    });
+  } else if (tab) {
+    toggleAssistantInTab(tab);
   }
-} else {
-  console.log('Running in non-extension environment. Chrome extension APIs not available.');
+}
+
+// Toggle assistant in a specific tab
+function toggleAssistantInTab(tab) {
+  // Make sure we have the right permissions
+  if (chrome.scripting && chrome.scripting.executeScript) {
+    // Send message to content script
+    chrome.tabs.sendMessage(
+      tab.id, 
+      { action: 'toggle_mcat_assistant' },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          // Content script not loaded, inject it
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          }, () => {
+            // After injection, try again
+            setTimeout(() => {
+              chrome.tabs.sendMessage(
+                tab.id,
+                { action: 'toggle_mcat_assistant' },
+                (response) => {
+                  if (response) {
+                    isAssistantVisible = response.status === 'shown' || response.status === 'created';
+                  }
+                }
+              );
+            }, 100);
+          });
+        } else if (response) {
+          // Update state based on response
+          isAssistantVisible = response.status === 'shown' || response.status === 'created';
+        }
+      }
+    );
+  } else if (chrome.sidePanel && chrome.sidePanel.open) {
+    // Fallback to side panel if available
+    chrome.sidePanel.open({ tabId: tab.id });
+    isAssistantVisible = true;
+  }
 }
