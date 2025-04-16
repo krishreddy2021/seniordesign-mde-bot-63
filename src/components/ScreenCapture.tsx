@@ -3,10 +3,10 @@ import React, { useState, useRef, useEffect } from "react";
 import { Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { isChromeExtension, hasCapturePermission, requestCapturePermission } from "@/utils/captureUtils";
+import { isChromeExtension } from "@/utils/captureUtils";
 
 interface ScreenCaptureProps {
-  onCapturedText: (text: string, imageData?: string) => void; // Updated to accept optional imageData
+  onCapturedText: (text: string, imageData?: string) => void;
   onCapturedImage?: (imageData: string) => void;
 }
 
@@ -17,235 +17,86 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Set up keyboard shortcut (Alt+S)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && e.key === "s") {
-        startCapture();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  // Listen for captured image events from window event
-  useEffect(() => {
-    const handleCapturedImageEvent = (event: CustomEvent) => {
-      if (event.detail && event.detail.imageData) {
-        console.log('Received captured image from custom event');
-        processImage(event.detail.imageData);
-      }
-    };
-
-    window.addEventListener('captured-image-event', handleCapturedImageEvent as EventListener);
-    return () => {
-      window.removeEventListener('captured-image-event', handleCapturedImageEvent as EventListener);
-    };
-  }, []);
-
-  // Setup message listener for content script communication
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.action === 'captured_image' && event.data.imageData) {
-        console.log('Received captured image from content script message');
-        processImage(event.data.imageData);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, []);
-
-  const processImage = (imageData: string) => {
-    // Make sure we have the image data
-    if (!imageData) {
+  const startCapture = async () => {
+    console.log('Starting full screen capture');
+    
+    if (!isChromeExtension()) {
       toast({
-        title: "Capture Failed",
-        description: "Failed to process the captured image.",
+        title: "Unsupported Environment",
+        description: "Screen capture only works in Chrome extension",
         variant: "destructive"
       });
       return;
     }
 
-    console.log('Processing captured image');
-    
-    // Send to both text and image handlers
-    if (onCapturedImage) {
-      onCapturedImage(imageData);
-    }
-    
-    // For real OCR, we would use an OCR service here
-    // For now, we'll use placeholder text
-    const text = `[OCR Text from screenshot]
-    
-This text was extracted from the selected area of your screen.
-The screenshot has been successfully captured and added to the chat.
-
-For real OCR processing, this extension would need to integrate with an OCR service like:
-- Google Cloud Vision API
-- Tesseract.js (browser-based OCR)
-- OpenAI's Vision models`;
-    
-    // Pass both text and imageData to onCapturedText
-    onCapturedText(text, imageData);
-    
-    toast({
-      title: "Screenshot Captured",
-      description: "Screenshot added to chat",
-    });
-
-    // Reset state
-    setIsCapturing(false);
-  };
-
-  const startCapture = async () => {
-    console.log('Starting screen capture');
-    // Check if we're running in a Chrome extension
-    if (isChromeExtension()) {
-      // For Chrome extension, we need to request permissions
-      const hasPermission = await hasCapturePermission();
-      if (!hasPermission) {
-        const granted = await requestCapturePermission();
-        if (!granted) {
-          toast({
-            title: "Permission Denied",
-            description: "Permission to capture screen is required.",
-            variant: "destructive"
-          });
-          return;
-        }
+    try {
+      // Request desktop capture permissions
+      if (window.chrome?.desktopCapture) {
+        window.chrome.desktopCapture.chooseDesktopMedia(
+          ['screen', 'window', 'tab'], 
+          (streamId) => {
+            if (streamId) {
+              // Capture the selected source
+              navigator.mediaDevices.getUserMedia({
+                video: {
+                  mandatory: {
+                    chromeMediaSource: 'desktop',
+                    chromeMediaSourceId: streamId
+                  }
+                }
+              }).then((stream) => {
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                  video.play();
+                  video.pause();
+                  
+                  const canvas = document.createElement('canvas');
+                  canvas.width = video.videoWidth;
+                  canvas.height = video.videoHeight;
+                  
+                  const ctx = canvas.getContext('2d');
+                  ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+                  
+                  const imageData = canvas.toDataURL('image/png');
+                  
+                  // Process captured image
+                  if (onCapturedImage) {
+                    onCapturedImage(imageData);
+                  }
+                  
+                  onCapturedText('Screen captured successfully', imageData);
+                  
+                  toast({
+                    title: "Screen Captured",
+                    description: "Full screen screenshot taken"
+                  });
+                  
+                  // Stop all tracks
+                  stream.getTracks().forEach(track => track.stop());
+                };
+              }).catch((err) => {
+                console.error('Error capturing screen:', err);
+                toast({
+                  title: "Capture Failed",
+                  description: err.message,
+                  variant: "destructive"
+                });
+              });
+            }
+          }
+        );
+      } else {
+        throw new Error('Desktop capture not supported');
       }
-    }
-
-    // In Chrome extension environment, use chrome.tabs API 
-    if (isChromeExtension() && window.chrome?.tabs) {
-      setIsCapturing(true);
-      
+    } catch (error) {
+      console.error('Screen capture error:', error);
       toast({
-        title: "Screen Capture Started",
-        description: "Click and drag to select any area of the screen to scan. Press ESC to cancel.",
+        title: "Capture Failed",
+        description: String(error),
+        variant: "destructive"
       });
-      
-      try {
-        window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]?.id) {
-            console.log('Sending message to start screen capture');
-            // Check if sendMessage is available on the tabs API
-            if (window.chrome.tabs && 'sendMessage' in window.chrome.tabs) {
-              window.chrome.tabs.sendMessage(
-                tabs[0].id,
-                { action: 'start_screen_capture' }
-              );
-            } else {
-              console.warn("tabs.sendMessage is not available in this browser");
-              fallbackSimulatedCapture(0, 0, 300, 200);
-            }
-          }
-        });
-      } catch (error) {
-        console.error("Error sending message to content script:", error);
-        fallbackSimulatedCapture(0, 0, 300, 200);
-      }
-    } else {
-      // Fallback for development environment
-      console.log('Using fallback capture in development environment');
-      fallbackSimulatedCapture(0, 0, 300, 200);
     }
-  };
-
-  const cancelCapture = () => {
-    setIsCapturing(false);
-
-    // Notify content script if in extension
-    if (isChromeExtension() && window.chrome?.tabs) {
-      try {
-        window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]?.id) {
-            // Check if sendMessage is available on the tabs API
-            if (window.chrome.tabs && 'sendMessage' in window.chrome.tabs) {
-              window.chrome.tabs.sendMessage(
-                tabs[0].id,
-                { action: 'cancel_screen_capture' }
-              );
-            } else {
-              console.warn("tabs.sendMessage is not available in this browser");
-            }
-          }
-        });
-      } catch (error) {
-        console.error("Error sending message to content script:", error);
-      }
-    }
-  };
-
-  // Fallback function for development or when permissions are not available
-  const fallbackSimulatedCapture = (captureLeft: number, captureTop: number, captureWidth: number, captureHeight: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    canvas.width = captureWidth;
-    canvas.height = captureHeight;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Create a colored rectangle to represent a captured area
-    ctx.fillStyle = "#f0f4f8";
-    ctx.fillRect(0, 0, captureWidth, captureHeight);
-    
-    // Add some text to make it look like content
-    ctx.font = "14px Arial";
-    ctx.fillStyle = "#000";
-    ctx.fillText("Captured Area (Fallback Mode)", 10, 30);
-    ctx.fillText(`Size: ${captureWidth}x${captureHeight}`, 10, 50);
-    ctx.fillText(`Position: (${captureLeft}, ${captureTop})`, 10, 70);
-    ctx.fillText("Chrome API unavailable - using simulated capture", 10, 100);
-    
-    // Draw some shapes to simulate content
-    ctx.strokeStyle = "#1E88E5"; // Blue now instead of previous color
-    ctx.lineWidth = 2;
-    ctx.strokeRect(15, 120, captureWidth - 30, captureHeight / 3);
-    ctx.fillStyle = "#1E88E533"; // Semi-transparent blue
-    ctx.fillRect(15, 120, captureWidth - 30, captureHeight / 3);
-    
-    // Get image data
-    const imageData = canvas.toDataURL('image/png');
-    
-    // Send to both text and image handlers
-    if (onCapturedImage) {
-      onCapturedImage(imageData);
-    }
-    
-    // Generate simulated OCR text
-    const text = processSimulatedCapture(captureLeft, captureTop, captureWidth, captureHeight);
-    // Pass both text and imageData
-    onCapturedText(text, imageData);
-    
-    toast({
-      title: "Simulated Capture",
-      description: "Chrome API unavailable - using simulated capture",
-      variant: "destructive"
-    });
-    
-    setIsCapturing(false);
-  };
-
-  const processSimulatedCapture = (captureLeft: number, captureTop: number, captureWidth: number, captureHeight: number): string => {
-    return `[Simulated OCR Result - Chrome API unavailable]
-    
-This is fallback content because:
-1. You might be in development mode (not running as an extension)
-2. The extension might not have the required permissions
-3. There might be an error with the Chrome API
-
-To enable actual screenshots in the Chrome extension:
-- Ensure "activeTab" permission is in manifest.json
-- Run as an actual Chrome extension
-
-Selected area: (${captureLeft},${captureTop}) with size ${captureWidth}x${captureHeight}`;
   };
 
   return (

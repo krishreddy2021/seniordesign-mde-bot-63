@@ -1,4 +1,3 @@
-
 {
   "manifest_version": 3,
   "name": "MCAT Tutor Assistant",
@@ -19,8 +18,10 @@
   "permissions": [
     "storage", 
     "activeTab", 
+    "tabs",
     "sidePanel", 
-    "scripting"
+    "scripting",
+    "desktopCapture"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",

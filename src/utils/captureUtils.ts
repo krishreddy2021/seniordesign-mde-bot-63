@@ -1,4 +1,3 @@
-
 // Utility functions for screenshot capture and OCR processing
 
 /**
@@ -93,4 +92,54 @@ export const captureVisibleTab = async (): Promise<string> => {
     console.error("Error capturing visible tab:", error);
     throw error;
   }
+};
+
+/**
+ * Advanced screen capture method using desktop capture API
+ */
+export const captureFullScreen = async (): Promise<string> => {
+  if (!isChromeExtension() || !window.chrome?.desktopCapture) {
+    throw new Error("Full screen capture not supported");
+  }
+
+  return new Promise((resolve, reject) => {
+    window.chrome.desktopCapture.chooseDesktopMedia(
+      ['screen', 'window', 'tab'], 
+      (streamId) => {
+        if (streamId) {
+          navigator.mediaDevices.getUserMedia({
+            video: {
+              mandatory: {
+                chromeMediaSource: 'desktop',
+                chromeMediaSourceId: streamId
+              }
+            }
+          }).then((stream) => {
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+              video.play();
+              video.pause();
+              
+              const canvas = document.createElement('canvas');
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+              
+              const imageData = canvas.toDataURL('image/png');
+              
+              // Stop all tracks
+              stream.getTracks().forEach(track => track.stop());
+              
+              resolve(imageData);
+            };
+          }).catch(reject);
+        } else {
+          reject(new Error('No stream selected'));
+        }
+      }
+    );
+  });
 };
