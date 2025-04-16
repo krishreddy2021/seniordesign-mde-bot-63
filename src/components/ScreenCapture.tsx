@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { isChromeExtension, hasCapturePermission, requestCapturePermission } from "@/utils/captureUtils";
 
 interface ScreenCaptureProps {
-  onCapturedText: (text: string) => void;
+  onCapturedText: (text: string, imageData?: string) => void; // Updated to accept optional imageData
   onCapturedImage?: (imageData: string) => void;
 }
 
@@ -27,6 +27,20 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Listen for captured image events from window event
+  useEffect(() => {
+    const handleCapturedImageEvent = (event: CustomEvent) => {
+      if (event.detail && event.detail.imageData) {
+        processImage(event.detail.imageData);
+      }
+    };
+
+    window.addEventListener('captured-image-event', handleCapturedImageEvent as EventListener);
+    return () => {
+      window.removeEventListener('captured-image-event', handleCapturedImageEvent as EventListener);
+    };
   }, []);
 
   // Setup message listener for content script communication
@@ -71,6 +85,7 @@ For real OCR processing, this extension would need to integrate with an OCR serv
 - Tesseract.js (browser-based OCR)
 - OpenAI's Vision models`;
     
+    // Pass both text and imageData to onCapturedText
     onCapturedText(text, imageData);
     
     toast({
@@ -83,7 +98,7 @@ For real OCR processing, this extension would need to integrate with an OCR serv
   };
 
   const startCapture = async () => {
-    // Check if we're running as a Chrome extension
+    // Check if we're running in a Chrome extension
     if (isChromeExtension()) {
       // For Chrome extension, we need to request permissions
       const hasPermission = await hasCapturePermission();
@@ -113,7 +128,7 @@ For real OCR processing, this extension would need to integrate with an OCR serv
         window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0]?.id) {
             // Check if sendMessage is available on the tabs API
-            if ('sendMessage' in window.chrome.tabs) {
+            if (window.chrome.tabs && 'sendMessage' in window.chrome.tabs) {
               window.chrome.tabs.sendMessage(
                 tabs[0].id,
                 { action: 'start_screen_capture' }
@@ -143,7 +158,7 @@ For real OCR processing, this extension would need to integrate with an OCR serv
         window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0]?.id) {
             // Check if sendMessage is available on the tabs API
-            if ('sendMessage' in window.chrome.tabs) {
+            if (window.chrome.tabs && 'sendMessage' in window.chrome.tabs) {
               window.chrome.tabs.sendMessage(
                 tabs[0].id,
                 { action: 'cancel_screen_capture' }
@@ -199,6 +214,7 @@ For real OCR processing, this extension would need to integrate with an OCR serv
     
     // Generate simulated OCR text
     const text = processSimulatedCapture(captureLeft, captureTop, captureWidth, captureHeight);
+    // Pass both text and imageData
     onCapturedText(text, imageData);
     
     toast({
