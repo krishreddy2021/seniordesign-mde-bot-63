@@ -16,8 +16,16 @@
     "48": "icon48.png",
     "128": "icon128.png"
   },
-  "permissions": ["storage", "activeTab", "sidePanel", "scripting"],
-  "host_permissions": ["https://generativelanguage.googleapis.com/*"],
+  "permissions": [
+    "storage", 
+    "activeTab", 
+    "sidePanel", 
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "background.js"
   },

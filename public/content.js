@@ -137,7 +137,12 @@ function setupCaptureOverlay() {
   captureOverlay = document.createElement('div');
   captureOverlay.id = 'mcat-tutor-capture-overlay';
   captureOverlay.style.position = 'fixed';
-  captureOverlay.style.inset = '0';
+  captureOverlay.style.top = '0';
+  captureOverlay.style.left = '0';
+  captureOverlay.style.right = '0';
+  captureOverlay.style.bottom = '0';
+  captureOverlay.style.width = '100vw';
+  captureOverlay.style.height = '100vh';
   captureOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
   captureOverlay.style.cursor = 'crosshair';
   captureOverlay.style.zIndex = '2147483646'; // Just below the max z-index
@@ -146,7 +151,7 @@ function setupCaptureOverlay() {
   captureSelection = document.createElement('div');
   captureSelection.id = 'mcat-tutor-capture-selection';
   captureSelection.style.position = 'fixed';
-  captureSelection.style.border = '2px solid #1E88E5'; // Now using blue instead of red
+  captureSelection.style.border = '2px solid #1E88E5'; // Blue border
   captureSelection.style.backgroundColor = 'rgba(30, 136, 229, 0.1)'; // Light blue background
   captureSelection.style.display = 'none';
   captureSelection.style.pointerEvents = 'none';
@@ -161,6 +166,9 @@ function setupCaptureOverlay() {
   captureOverlay.addEventListener('mousemove', handleCaptureMouseMove);
   captureOverlay.addEventListener('mouseup', handleCaptureMouseUp);
   document.addEventListener('keydown', handleCaptureKeyDown);
+  
+  // Log that the overlay is active
+  console.log('Capture overlay setup complete');
 }
 
 function removeCaptureOverlay() {
@@ -170,7 +178,9 @@ function removeCaptureOverlay() {
     captureOverlay.removeEventListener('mouseup', handleCaptureMouseUp);
     document.removeEventListener('keydown', handleCaptureKeyDown);
     
-    document.body.removeChild(captureOverlay);
+    if (captureOverlay.parentNode) {
+      document.body.removeChild(captureOverlay);
+    }
     if (captureSelection && captureSelection.parentNode) {
       document.body.removeChild(captureSelection);
     }
@@ -178,12 +188,16 @@ function removeCaptureOverlay() {
     captureOverlay = null;
     captureSelection = null;
     captureStartPoint = null;
+    
+    console.log('Capture overlay removed');
   }
 }
 
 function handleCaptureMouseDown(e) {
   captureStartPoint = { x: e.clientX, y: e.clientY };
+  console.log('Capture started at:', captureStartPoint);
   e.preventDefault(); // Prevent text selection
+  e.stopPropagation(); // Stop event from bubbling
 }
 
 function handleCaptureMouseMove(e) {
@@ -204,12 +218,16 @@ function handleCaptureMouseMove(e) {
   captureSelection.style.top = top + 'px';
   captureSelection.style.width = width + 'px';
   captureSelection.style.height = height + 'px';
+  
+  e.preventDefault();
+  e.stopPropagation();
 }
 
 function handleCaptureMouseUp(e) {
   // Selection completed - send message to extension
   if (captureStartPoint) {
     const endPoint = { x: e.clientX, y: e.clientY };
+    console.log('Capture ended at:', endPoint);
     
     // Calculate dimensions
     const left = Math.min(captureStartPoint.x, endPoint.x);
@@ -219,15 +237,18 @@ function handleCaptureMouseUp(e) {
     
     // Only send if selection is big enough
     if (width >= 10 && height >= 10) {
+      console.log('Sending capture area request:', { left, top, width, height });
       // Take the screenshot before removing the overlay
       chrome.runtime.sendMessage({
         action: 'capture_area',
         area: { left, top, width, height }
       }, (response) => {
+        console.log('Capture response:', response);
         // Now remove the overlay after screenshot is taken
         removeCaptureOverlay();
         
         if (response && response.imageData) {
+          console.log('Received image data, forwarding to extension frame');
           // Forward the image data to the extension frame
           if (extensionFrame && extensionFrame.contentWindow) {
             extensionFrame.contentWindow.postMessage({
@@ -238,15 +259,18 @@ function handleCaptureMouseUp(e) {
         }
       });
     } else {
+      console.log('Selection too small, removing overlay');
       removeCaptureOverlay();
     }
   }
   e.preventDefault();
+  e.stopPropagation();
 }
 
 function handleCaptureKeyDown(e) {
   // Cancel capture on Escape key
   if (e.key === 'Escape') {
+    console.log('Capture cancelled by Escape key');
     removeCaptureOverlay();
   }
 }

@@ -42,43 +42,55 @@ if (isExtensionEnvironment) {
   
   // Listen for messages from content scripts
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('Background script received message:', message);
+    
     if (message.action === 'capture_area' && sender.tab) {
       const area = message.area;
+      console.log('Capturing area:', area);
       
       // Capture the visible tab
-      chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }, (dataUrl) => {
-        if (chrome.runtime.lastError) {
-          console.error('Screenshot capture error:', chrome.runtime.lastError);
-          sendResponse({ success: false, error: chrome.runtime.lastError.message });
-          return;
+      chrome.tabs.captureVisibleTab(
+        sender.tab.windowId, 
+        { format: 'png' }, 
+        (dataUrl) => {
+          if (chrome.runtime.lastError) {
+            console.error('Screenshot capture error:', chrome.runtime.lastError);
+            sendResponse({ success: false, error: chrome.runtime.lastError.message });
+            return;
+          }
+          
+          console.log('Screenshot captured successfully');
+          
+          // Create an image to crop it
+          const img = new Image();
+          
+          img.onload = function() {
+            console.log('Image loaded, dimensions:', img.width, 'x', img.height);
+            // Create a canvas to crop the image
+            const canvas = document.createElement('canvas');
+            canvas.width = area.width;
+            canvas.height = area.height;
+            
+            const ctx = canvas.getContext('2d');
+            // Draw the cropped image
+            ctx.drawImage(img, area.left, area.top, area.width, area.height, 0, 0, area.width, area.height);
+            
+            // Get the cropped image as data URL
+            const croppedImageData = canvas.toDataURL('image/png');
+            console.log('Cropped image created');
+            
+            // Send the cropped image back
+            sendResponse({ success: true, imageData: croppedImageData });
+          };
+          
+          img.onerror = function(error) {
+            console.error('Failed to load screenshot:', error);
+            sendResponse({ success: false, error: 'Failed to load screenshot' });
+          };
+          
+          img.src = dataUrl;
         }
-        
-        // Create an image to crop it
-        const img = new Image();
-        img.onload = function() {
-          // Create a canvas to crop the image
-          const canvas = document.createElement('canvas');
-          canvas.width = area.width;
-          canvas.height = area.height;
-          
-          const ctx = canvas.getContext('2d');
-          // Draw the cropped image
-          ctx.drawImage(img, area.left, area.top, area.width, area.height, 0, 0, area.width, area.height);
-          
-          // Get the cropped image as data URL
-          const croppedImageData = canvas.toDataURL('image/png');
-          
-          // Send the cropped image back
-          sendResponse({ success: true, imageData: croppedImageData });
-        };
-        
-        img.onerror = function() {
-          console.error('Failed to load screenshot');
-          sendResponse({ success: false, error: 'Failed to load screenshot' });
-        };
-        
-        img.src = dataUrl;
-      });
+      );
       
       // Return true to indicate we'll send a response asynchronously
       return true;

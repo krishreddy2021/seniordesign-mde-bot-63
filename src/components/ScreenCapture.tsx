@@ -33,6 +33,7 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
   useEffect(() => {
     const handleCapturedImageEvent = (event: CustomEvent) => {
       if (event.detail && event.detail.imageData) {
+        console.log('Received captured image from custom event');
         processImage(event.detail.imageData);
       }
     };
@@ -47,6 +48,7 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.action === 'captured_image' && event.data.imageData) {
+        console.log('Received captured image from content script message');
         processImage(event.data.imageData);
       }
     };
@@ -68,6 +70,8 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
       return;
     }
 
+    console.log('Processing captured image');
+    
     // Send to both text and image handlers
     if (onCapturedImage) {
       onCapturedImage(imageData);
@@ -98,6 +102,7 @@ For real OCR processing, this extension would need to integrate with an OCR serv
   };
 
   const startCapture = async () => {
+    console.log('Starting screen capture');
     // Check if we're running in a Chrome extension
     if (isChromeExtension()) {
       // For Chrome extension, we need to request permissions
@@ -127,6 +132,7 @@ For real OCR processing, this extension would need to integrate with an OCR serv
       try {
         window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0]?.id) {
+            console.log('Sending message to start screen capture');
             // Check if sendMessage is available on the tabs API
             if (window.chrome.tabs && 'sendMessage' in window.chrome.tabs) {
               window.chrome.tabs.sendMessage(
@@ -145,6 +151,7 @@ For real OCR processing, this extension would need to integrate with an OCR serv
       }
     } else {
       // Fallback for development environment
+      console.log('Using fallback capture in development environment');
       fallbackSimulatedCapture(0, 0, 300, 200);
     }
   };
