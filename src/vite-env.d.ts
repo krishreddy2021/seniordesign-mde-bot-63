@@ -16,6 +16,7 @@ interface Window {
       create: (createProperties: any, callback?: (tab: any) => void) => void;
       update: (tabId: number, updateProperties: any, callback?: (tab: any) => void) => void;
       remove: (tabId: number, callback?: () => void) => void;
+      sendMessage: (tabId: number, message: any, callback?: (response: any) => void) => void;
       onRemoved: {
         addListener: (callback: (tabId: number, removeInfo: any) => void) => void;
       };
@@ -69,3 +70,4 @@ interface Window {
     };
   };
 }
+

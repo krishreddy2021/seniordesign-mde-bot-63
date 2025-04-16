@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,10 +86,15 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
       try {
         window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0]?.id) {
-            window.chrome.tabs.sendMessage(
-              tabs[0].id,
-              { action: 'start_screen_capture' }
-            );
+            // Check if sendMessage is available on the tabs API
+            if ('sendMessage' in window.chrome.tabs) {
+              window.chrome.tabs.sendMessage(
+                tabs[0].id,
+                { action: 'start_screen_capture' }
+              );
+            } else {
+              console.warn("tabs.sendMessage is not available in this browser");
+            }
           }
         });
       } catch (error) {
@@ -111,10 +115,15 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
       try {
         window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0]?.id) {
-            window.chrome.tabs.sendMessage(
-              tabs[0].id,
-              { action: 'cancel_screen_capture' }
-            );
+            // Check if sendMessage is available on the tabs API
+            if ('sendMessage' in window.chrome.tabs) {
+              window.chrome.tabs.sendMessage(
+                tabs[0].id,
+                { action: 'cancel_screen_capture' }
+              );
+            } else {
+              console.warn("tabs.sendMessage is not available in this browser");
+            }
           }
         });
       } catch (error) {
