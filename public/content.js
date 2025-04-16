@@ -1,3 +1,4 @@
+
 // Content script for MCAT Tutor Assistant
 console.log('MCAT Tutor Assistant content script loaded');
 
@@ -132,7 +133,7 @@ function setupCaptureOverlay() {
   // Remove any existing overlay
   removeCaptureOverlay();
   
-  // Create capture overlay
+  // Create capture overlay that covers the ENTIRE webpage
   captureOverlay = document.createElement('div');
   captureOverlay.id = 'mcat-tutor-capture-overlay';
   captureOverlay.style.position = 'fixed';
@@ -145,8 +146,8 @@ function setupCaptureOverlay() {
   captureSelection = document.createElement('div');
   captureSelection.id = 'mcat-tutor-capture-selection';
   captureSelection.style.position = 'fixed';
-  captureSelection.style.border = '2px solid #1EAEDB';
-  captureSelection.style.backgroundColor = 'rgba(30, 174, 219, 0.1)';
+  captureSelection.style.border = '2px solid #1E88E5'; // Now using blue instead of red
+  captureSelection.style.backgroundColor = 'rgba(30, 136, 229, 0.1)'; // Light blue background
   captureSelection.style.display = 'none';
   captureSelection.style.pointerEvents = 'none';
   captureSelection.style.zIndex = '2147483646';
@@ -182,6 +183,7 @@ function removeCaptureOverlay() {
 
 function handleCaptureMouseDown(e) {
   captureStartPoint = { x: e.clientX, y: e.clientY };
+  e.preventDefault(); // Prevent text selection
 }
 
 function handleCaptureMouseMove(e) {
@@ -217,20 +219,29 @@ function handleCaptureMouseUp(e) {
     
     // Only send if selection is big enough
     if (width >= 10 && height >= 10) {
-      // Remove overlay before capture to ensure it's not in the screenshot
-      removeCaptureOverlay();
-      
-      // Send selection coordinates back to extension
-      if (extensionFrame && extensionFrame.contentWindow) {
-        extensionFrame.contentWindow.postMessage({
-          action: 'capture_selection',
-          selection: { left, top, width, height }
-        }, '*');
-      }
+      // Take the screenshot before removing the overlay
+      chrome.runtime.sendMessage({
+        action: 'capture_area',
+        area: { left, top, width, height }
+      }, (response) => {
+        // Now remove the overlay after screenshot is taken
+        removeCaptureOverlay();
+        
+        if (response && response.imageData) {
+          // Forward the image data to the extension frame
+          if (extensionFrame && extensionFrame.contentWindow) {
+            extensionFrame.contentWindow.postMessage({
+              action: 'captured_image',
+              imageData: response.imageData
+            }, '*');
+          }
+        }
+      });
     } else {
       removeCaptureOverlay();
     }
   }
+  e.preventDefault();
 }
 
 function handleCaptureKeyDown(e) {

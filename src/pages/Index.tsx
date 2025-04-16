@@ -35,17 +35,18 @@ const Index: React.FC = () => {
     }
   }, []);
 
-  // Handle messages from content script
+  // Listen for messages from the content script
   useEffect(() => {
     const handleContentScriptMessage = (event: MessageEvent) => {
-      // Check if this is a message from our content script
-      if (event.data && event.data.action === 'capture_selection') {
-        console.log('Received capture selection:', event.data.selection);
+      // Forward captured image events to any listeners
+      if (event.data && event.data.action === 'captured_image' && event.data.imageData) {
+        console.log('Received captured image from content script');
         
-        // We would send this to the ScreenCapture component
-        // For now, we'll just log it
-        const customEvent = new CustomEvent('screen-capture-selection', {
-          detail: event.data.selection
+        // Dispatch custom event that ScreenCapture can listen for
+        const customEvent = new CustomEvent('captured-image-event', {
+          detail: {
+            imageData: event.data.imageData
+          }
         });
         window.dispatchEvent(customEvent);
       }
