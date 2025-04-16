@@ -18,7 +18,8 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const startCapture = async () => {
-    console.log('Starting full screen capture');
+    console.log('Starting screen capture');
+    setIsCapturing(true);
     
     if (!isChromeExtension()) {
       toast({
@@ -26,25 +27,69 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
         description: "Screen capture only works in Chrome extension",
         variant: "destructive"
       });
+      setIsCapturing(false);
       return;
     }
 
     try {
-      // Request desktop capture permissions
-      if (window.chrome?.desktopCapture) {
+      if (window.chrome?.tabs?.captureVisibleTab) {
+        // Use tab capture if available (simpler method)
+        window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs.length === 0) {
+            throw new Error("No active tab found");
+          }
+          
+          window.chrome.tabs.captureVisibleTab(
+            null, 
+            { format: 'png' },
+            (dataUrl) => {
+              if (window.chrome?.runtime?.lastError) {
+                throw new Error(window.chrome.runtime.lastError.message);
+              }
+              
+              if (onCapturedImage) {
+                onCapturedImage(dataUrl);
+              }
+              
+              onCapturedText('Screen captured successfully', dataUrl);
+              
+              toast({
+                title: "Screen Captured",
+                description: "Screenshot taken"
+              });
+              
+              setIsCapturing(false);
+            }
+          );
+        });
+      } else if (window.chrome?.desktopCapture) {
+        // Fall back to desktop capture API
         window.chrome.desktopCapture.chooseDesktopMedia(
           ['screen', 'window', 'tab'], 
+          null,
           (streamId) => {
-            if (streamId) {
-              // Capture the selected source
-              navigator.mediaDevices.getUserMedia({
-                video: {
-                  mandatory: {
-                    chromeMediaSource: 'desktop',
-                    chromeMediaSourceId: streamId
-                  }
-                }
-              }).then((stream) => {
+            if (!streamId) {
+              setIsCapturing(false);
+              toast({
+                title: "Screen Capture Cancelled",
+                description: "No source was selected",
+              });
+              return;
+            }
+            
+            // Use the streamId with getUserMedia
+            const constraints: MediaStreamConstraints = {
+              video: {
+                // Use any type to bypass type checking for Chrome-specific properties
+                ...(({
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: streamId
+                } as any))
+              }
+            };
+            
+            navigator.mediaDevices.getUserMedia(constraints)
+              .then((stream) => {
                 const video = document.createElement('video');
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
@@ -69,25 +114,46 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
                   
                   toast({
                     title: "Screen Captured",
-                    description: "Full screen screenshot taken"
+                    description: "Screenshot taken"
                   });
                   
                   // Stop all tracks
                   stream.getTracks().forEach(track => track.stop());
+                  setIsCapturing(false);
                 };
-              }).catch((err) => {
+              })
+              .catch((err) => {
                 console.error('Error capturing screen:', err);
                 toast({
                   title: "Capture Failed",
                   description: err.message,
                   variant: "destructive"
                 });
+                setIsCapturing(false);
               });
-            }
           }
         );
       } else {
-        throw new Error('Desktop capture not supported');
+        // If neither method is available, use content script to handle screen capture
+        if (window.chrome?.runtime?.sendMessage) {
+          window.chrome.runtime.sendMessage(
+            { action: 'start_screen_capture' },
+            (response) => {
+              if (window.chrome?.runtime?.lastError) {
+                throw new Error(window.chrome.runtime.lastError.message);
+              }
+              
+              // Content script will handle the capture and send back the image
+              // via window.postMessage which is listened for in Index.tsx
+              toast({
+                title: "Screen Capture",
+                description: "Select area of screen to capture"
+              });
+            }
+          );
+        } else {
+          throw new Error('Screen capture not supported');
+        }
       }
     } catch (error) {
       console.error('Screen capture error:', error);
@@ -96,6 +162,7 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
         description: String(error),
         variant: "destructive"
       });
+      setIsCapturing(false);
     }
   };
 
@@ -109,7 +176,11 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
         title="Scan Screen (Alt+S)"
         disabled={isCapturing}
       >
-        <Scan className="h-4 w-4" />
+        {isCapturing ? (
+          <span className="animate-pulse">...</span>
+        ) : (
+          <Scan className="h-4 w-4" />
+        )}
       </Button>
       
       {/* Hidden canvas for capturing */}

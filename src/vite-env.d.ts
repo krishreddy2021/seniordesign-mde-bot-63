@@ -68,6 +68,18 @@ interface Window {
         addListener: (callback: () => void) => void;
       };
     };
+    desktopCapture?: {
+      chooseDesktopMedia: (sources: string[], tab: any, callback: (streamId: string) => void) => void;
+    };
+    scripting?: {
+      executeScript: (options: any, callback?: () => void) => void;
+    };
   };
+}
+
+// Extend MediaTrackConstraints for Chrome's desktop capture
+interface MediaTrackConstraintSet {
+  chromeMediaSource?: string;
+  chromeMediaSourceId?: string;
 }
 

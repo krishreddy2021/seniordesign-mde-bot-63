@@ -1,3 +1,4 @@
+
 // Utility functions for screenshot capture and OCR processing
 
 /**
@@ -105,16 +106,26 @@ export const captureFullScreen = async (): Promise<string> => {
   return new Promise((resolve, reject) => {
     window.chrome.desktopCapture.chooseDesktopMedia(
       ['screen', 'window', 'tab'], 
+      null,
       (streamId) => {
-        if (streamId) {
-          navigator.mediaDevices.getUserMedia({
-            video: {
-              mandatory: {
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: streamId
-              }
-            }
-          }).then((stream) => {
+        if (!streamId) {
+          reject(new Error('No stream selected'));
+          return;
+        }
+        
+        // Use the streamId with getUserMedia
+        const constraints: MediaStreamConstraints = {
+          video: {
+            // Use any type to bypass type checking for Chrome-specific properties
+            ...(({
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: streamId
+            } as any))
+          }
+        };
+        
+        navigator.mediaDevices.getUserMedia(constraints)
+          .then((stream) => {
             const video = document.createElement('video');
             video.srcObject = stream;
             video.onloadedmetadata = () => {
@@ -136,9 +147,6 @@ export const captureFullScreen = async (): Promise<string> => {
               resolve(imageData);
             };
           }).catch(reject);
-        } else {
-          reject(new Error('No stream selected'));
-        }
       }
     );
   });
