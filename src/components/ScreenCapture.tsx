@@ -36,13 +36,67 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isCapturing]);
 
-  const startCapture = () => {
+  const startCapture = async () => {
+    // Check if we're running as a Chrome extension
+    if (isChromeExtension()) {
+      // For Chrome extension, we need to request permissions
+      const hasPermission = await hasCapturePermission();
+      if (!hasPermission) {
+        const granted = await requestCapturePermission();
+        if (!granted) {
+          toast({
+            title: "Permission Denied",
+            description: "Permission to capture screen is required.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+    }
+
+    // In Chrome extension environment, use chrome.tabs API to focus the webpage tab first
+    if (isChromeExtension() && window.chrome?.tabs) {
+      window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]?.id) {
+          // Focus the active tab to ensure the capture works on the main content
+          window.chrome.tabs.update(tabs[0].id, { active: true }, () => {
+            // Now initialize the capture UI
+            initCapture();
+          });
+        } else {
+          // Fall back to regular capture if tab info is unavailable
+          initCapture();
+        }
+      });
+    } else {
+      // Not in Chrome extension or tabs API unavailable
+      initCapture();
+    }
+  };
+
+  const initCapture = () => {
     setIsCapturing(true);
     setStartPoint(null);
     toast({
       title: "Screen Capture Started",
-      description: "Click and drag to select an area to scan. Press ESC to cancel.",
+      description: "Click and drag to select any area of the screen to scan. Press ESC to cancel.",
     });
+    
+    // If in extension context, attempt to message the content script
+    if (isChromeExtension() && window.chrome?.tabs) {
+      try {
+        window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0]?.id) {
+            window.chrome.tabs.sendMessage(
+              tabs[0].id,
+              { action: 'start_screen_capture' }
+            );
+          }
+        });
+      } catch (error) {
+        console.error("Error sending message to content script:", error);
+      }
+    }
   };
 
   const cancelCapture = () => {
@@ -50,6 +104,22 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
     setStartPoint(null);
     if (selectionRef.current) {
       selectionRef.current.style.display = "none";
+    }
+
+    // Notify content script if in extension
+    if (isChromeExtension() && window.chrome?.tabs) {
+      try {
+        window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0]?.id) {
+            window.chrome.tabs.sendMessage(
+              tabs[0].id,
+              { action: 'cancel_screen_capture' }
+            );
+          }
+        });
+      } catch (error) {
+        console.error("Error sending message to content script:", error);
+      }
     }
   };
 
@@ -118,6 +188,7 @@ const ScreenCapture: React.FC<ScreenCaptureProps> = ({
       try {
         // In a Chrome extension environment
         if (isChromeExtension() && window.chrome?.tabs?.captureVisibleTab) {
+          // Use null for windowId to capture from current window
           window.chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
             if (window.chrome?.runtime?.lastError) {
               console.error('Chrome API error:', window.chrome.runtime.lastError);
@@ -301,14 +372,14 @@ Selected area: (${captureLeft},${captureTop}) with size ${captureWidth}x${captur
       {isCapturing && (
         <>
           <div 
-            className="fixed inset-0 bg-black/10 cursor-crosshair z-50"
+            className="fixed inset-0 bg-black/10 cursor-crosshair z-[2147483647]"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
           />
           <div 
             ref={selectionRef}
-            className="fixed border-2 border-primary bg-primary/10 pointer-events-none z-50"
+            className="fixed border-2 border-primary bg-primary/10 pointer-events-none z-[2147483647]"
             style={{ display: "none" }}
           />
         </>

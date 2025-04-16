@@ -66,3 +66,31 @@ export const requestCapturePermission = async (): Promise<boolean> => {
     return false;
   }
 };
+
+/**
+ * Capture the entire visible tab
+ */
+export const captureVisibleTab = async (): Promise<string> => {
+  if (!isChromeExtension() || !window.chrome?.tabs?.captureVisibleTab) {
+    throw new Error("Chrome screenshot API not available");
+  }
+  
+  try {
+    return new Promise<string>((resolve, reject) => {
+      window.chrome?.tabs?.captureVisibleTab(
+        null, // Current window
+        { format: 'png' },
+        (dataUrl) => {
+          if (window.chrome?.runtime?.lastError) {
+            reject(new Error(window.chrome.runtime.lastError.message));
+            return;
+          }
+          resolve(dataUrl);
+        }
+      );
+    });
+  } catch (error) {
+    console.error("Error capturing visible tab:", error);
+    throw error;
+  }
+};

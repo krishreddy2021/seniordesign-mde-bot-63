@@ -34,6 +34,28 @@ const Index: React.FC = () => {
       };
     }
   }, []);
+
+  // Handle messages from content script
+  useEffect(() => {
+    const handleContentScriptMessage = (event: MessageEvent) => {
+      // Check if this is a message from our content script
+      if (event.data && event.data.action === 'capture_selection') {
+        console.log('Received capture selection:', event.data.selection);
+        
+        // We would send this to the ScreenCapture component
+        // For now, we'll just log it
+        const customEvent = new CustomEvent('screen-capture-selection', {
+          detail: event.data.selection
+        });
+        window.dispatchEvent(customEvent);
+      }
+    };
+
+    window.addEventListener('message', handleContentScriptMessage);
+    return () => {
+      window.removeEventListener('message', handleContentScriptMessage);
+    };
+  }, []);
   
   return (
     <div className="extension-container w-full h-full flex flex-col overflow-hidden">
