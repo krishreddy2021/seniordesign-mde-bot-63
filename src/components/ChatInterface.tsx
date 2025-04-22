@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
@@ -375,6 +374,12 @@ const ChatInterface: React.FC = () => {
     });
   };
 
+  // NEW: handle image paste from ChatInput
+  const handleInputImagePaste = (dataUrl: string) => {
+    // Re-use upload logic
+    handleImageUpload(dataUrl);
+  };
+
   return (
     <div className="flex h-full w-full bg-background shadow-lg overflow-hidden">
       {showSidebar && (
@@ -499,6 +504,7 @@ const ChatInterface: React.FC = () => {
           onSendMessage={handleSendWithImage}
           disabled={isLoading} 
           imageAttached={!!uploadedImage}
+          onImagePaste={handleInputImagePaste} // NEW: handle pasted images
         />
         
         <SettingsDialog 
