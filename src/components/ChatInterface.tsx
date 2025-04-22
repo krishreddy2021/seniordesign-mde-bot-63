@@ -14,6 +14,7 @@ import { Moon, Sun, Upload } from "lucide-react";
 import { Button } from "./ui/button";
 import ImageUploader from "./ImageUploader";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./ui/select";
+import VoiceControls from "./VoiceControls";
 
 export interface Message {
   role: "user" | "assistant";
@@ -380,6 +381,35 @@ const ChatInterface: React.FC = () => {
     handleImageUpload(dataUrl);
   };
 
+  // --- Voice: On voice input, send transcript just like a normal message ---
+  const handleVoiceInput = (transcript: string) => {
+    if (transcript && transcript.trim()) {
+      handleSendWithImage(transcript);
+    }
+  };
+
+  // --- Voice: Use browser TTS to speak assistant's last response on request ---
+  const speakText = (text: string) => {
+    if (!window.speechSynthesis) return;
+    const utterance = new window.SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Automatically speak assistant replies when they arrive
+  useEffect(() => {
+    // Don't speak when loading or no messages
+    if (isLoading || !activeChat || !activeChat.messages.length) return;
+    const lastMsg = activeChat.messages[activeChat.messages.length - 1];
+    if (lastMsg.role === "assistant" && lastMsg.content) {
+      speakText(lastMsg.content);
+    }
+    // eslint-disable-next-line
+  }, [activeChat?.messages?.length]);
+
   return (
     <div className="flex h-full w-full bg-background shadow-lg overflow-hidden">
       {showSidebar && (
@@ -499,13 +529,22 @@ const ChatInterface: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
         </div>
-        
-        <ChatInput 
-          onSendMessage={handleSendWithImage}
-          disabled={isLoading} 
-          imageAttached={!!uploadedImage}
-          onImagePaste={handleInputImagePaste} // NEW: handle pasted images
-        />
+        <div className="flex items-center gap-2 px-2 pb-2">
+          {/* VoiceControls next to ChatInput */}
+          <VoiceControls
+            onVoiceInput={handleVoiceInput}
+            onSpeak={speakText}
+            disabled={isLoading}
+          />
+          <div className="flex-1">
+            <ChatInput
+              onSendMessage={handleSendWithImage}
+              disabled={isLoading}
+              imageAttached={!!uploadedImage}
+              onImagePaste={handleInputImagePaste}
+            />
+          </div>
+        </div>
         
         <SettingsDialog 
           open={openSettings} 
