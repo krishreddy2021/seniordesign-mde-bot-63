@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
@@ -13,6 +14,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { Moon, Sun, Upload } from "lucide-react";
 import { Button } from "./ui/button";
 import ImageUploader from "./ImageUploader";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./ui/select";
 
 export interface Message {
   role: "user" | "assistant";
@@ -24,6 +26,21 @@ export interface Message {
 // MCAT tutor system prompt
 const SYSTEM_PROMPT = `You are Marcus, an experienced MCAT tutor. You specialize in helping students prepare for the Medical College Admission Test with clear explanations, practice questions, and study strategies. You can explain complex concepts in biology, chemistry, physics, and psychology in an accessible way. You're patient, encouraging, and knowledgeable about the MCAT format and requirements.`;
 
+const GEMINI_MODELS = [
+  {
+    key: "gemini-1.5-flash",
+    label: "Gemini 1.5 Flash"
+  },
+  {
+    key: "gemini-2.0-flash",
+    label: "Gemini 2.0 Flash"
+  },
+  {
+    key: "gemini-2.5-pro",
+    label: "Gemini 2.5 Pro"
+  }
+];
+
 const ChatInterface: React.FC = () => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -33,6 +50,8 @@ const ChatInterface: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [showImageUploader, setShowImageUploader] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-1.5-flash"); // New: for Gemini model dropdown
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
@@ -245,7 +264,21 @@ const ChatInterface: React.FC = () => {
         geminiMessages.unshift(systemMessage);
       }
 
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', {
+      // Use the selected model for the API endpoint
+      const endpoint = (() => {
+        if (selectedModel === "gemini-1.5-flash") {
+          return "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+        }
+        if (selectedModel === "gemini-2.0-flash") {
+          return "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+        }
+        if (selectedModel === "gemini-2.5-pro") {
+          return "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+        }
+        return "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+      })();
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -362,15 +395,44 @@ const ChatInterface: React.FC = () => {
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
           showSidebar={showSidebar}
         >
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 rounded-full"
-            onClick={() => setShowImageUploader(true)}
-            title="Upload image"
-          >
-            <Upload className="h-4 w-4" />
-          </Button>
+          {/* Model Selector Dropdown - right next to upload button, small size */}
+          <div className="flex items-center space-x-1">
+            <Select
+              value={selectedModel}
+              onValueChange={setSelectedModel}
+            >
+              <SelectTrigger
+                className="h-8 w-[120px] px-2 text-xs rounded-md border border-input bg-background"
+                aria-label="Select Gemini Model"
+              >
+                <SelectValue>
+                  {
+                    GEMINI_MODELS.find(model => model.key === selectedModel)?.label
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent side="bottom" className="w-[150px] min-w-[120px] text-xs !z-50 bg-popover">
+                {GEMINI_MODELS.map(model => (
+                  <SelectItem 
+                    key={model.key} 
+                    value={model.key} 
+                    className="text-xs"
+                  >
+                    {model.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 rounded-full"
+              onClick={() => setShowImageUploader(true)}
+              title="Upload image"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+          </div>
           
           <ScreenCapture 
             onCapturedText={handleCapturedText} 
