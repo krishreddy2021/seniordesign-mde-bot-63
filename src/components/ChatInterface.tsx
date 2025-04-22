@@ -188,14 +188,49 @@ const ChatInterface: React.FC = () => {
         throw new Error("No API key provided");
       }
 
-      const geminiMessages = activeChat ? 
-        activeChat.messages.concat(userMessage).map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.imageUrl ? `[Image attached]\n\n${msg.content}` : msg.content }]
-        })) : 
+      // Helper function to extract MIME type from data URL
+      const getMimeTypeFromDataUrl = (dataUrl: string): string => {
+        const match = dataUrl.match(/^data:([^;]+);base64,/);
+        return match ? match[1] : "image/jpeg"; // Default to image/jpeg if not found
+      };
+      
+      // Process messages to include image data for Gemini multimodal capabilities
+      const geminiMessages = activeChat ?
+        activeChat.messages.concat(userMessage).map(msg => {
+          const parts = [];
+          
+          // Add image if present
+          if (msg.imageUrl) {
+            const mimeType = getMimeTypeFromDataUrl(msg.imageUrl);
+            parts.push({
+              inline_data: {
+                mime_type: mimeType,
+                data: msg.imageUrl.split(";base64,")[1] // Remove the data:image/type;base64, prefix
+              }
+            });
+          }
+          
+          // Add text content
+          if (msg.content) {
+            parts.push({ text: msg.content });
+          }
+          
+          return {
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: parts
+          };
+        }) :
         [{ 
-          role: 'user', 
-          parts: [{ text: userMessage.imageUrl ? `[Image attached]\n\n${userMessage.content}` : userMessage.content }] 
+          role: 'user',
+          parts: userMessage.imageUrl ? [
+            {
+              inline_data: {
+                mime_type: getMimeTypeFromDataUrl(userMessage.imageUrl),
+                data: userMessage.imageUrl.split(";base64,")[1]
+              }
+            },
+            { text: userMessage.content }
+          ] : [{ text: userMessage.content }]
         }];
 
       const systemMessage = {
@@ -203,7 +238,10 @@ const ChatInterface: React.FC = () => {
         parts: [{ text: SYSTEM_PROMPT }]
       };
 
-      if (!geminiMessages.some(msg => msg.role === 'model' && msg.parts[0].text.includes(SYSTEM_PROMPT))) {
+      if (!geminiMessages.some(msg => 
+        msg.role === 'model' && 
+        msg.parts.some(part => part.text && part.text.includes(SYSTEM_PROMPT))
+      )) {
         geminiMessages.unshift(systemMessage);
       }
 

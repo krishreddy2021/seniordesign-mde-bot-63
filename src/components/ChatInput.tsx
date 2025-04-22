@@ -29,7 +29,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false, 
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={imageAttached ? "Describe the image..." : "Type a message..."}
+          placeholder={imageAttached ? "Ask about this image or describe what you see..." : "Type a message..."}
           className="w-full p-2 pr-8 min-h-[40px] max-h-[80px] text-xs resize-none rounded-lg border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
