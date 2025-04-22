@@ -1,20 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
-import ChatMessage from "./ChatMessage";
-import ChatInput from "./ChatInput";
+import ChatSidebar from "./ChatSidebar";
+import ChatHeaderActions from "./ChatHeaderActions";
+import ChatMessageList from "./ChatMessageList";
+import ChatInputArea from "./ChatInputArea";
 import Header from "./Header";
-import SettingsDialog from "./SettingsDialog";
-import ChatList from "./ChatList";
 import ScreenCapture from "./ScreenCapture";
+import SettingsDialog from "./SettingsDialog";
+import ImageUploader from "./ImageUploader";
 import { useToast } from "@/hooks/use-toast";
 import { chromeStorage } from "@/utils/chromeStorage";
-import { Chat } from "@/types/chat";
-import { v4 as uuidv4 } from "uuid";
 import { useTheme } from "@/hooks/use-theme";
-import { Moon, Sun, Upload } from "lucide-react";
-import { Button } from "./ui/button";
-import ImageUploader from "./ImageUploader";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./ui/select";
-import VoiceControls from "./VoiceControls";
+import { v4 as uuidv4 } from "uuid";
+import { Chat } from "@/types/chat";
 
 export interface Message {
   role: "user" | "assistant";
@@ -413,141 +410,55 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="flex h-full w-full bg-background shadow-lg overflow-hidden">
       {showSidebar && (
-        <div className="w-[100px] min-w-[100px] h-full border-r border-border">
-          <ChatList
-            chats={chats}
-            activeChatId={activeChatId}
-            onChatSelect={setActiveChatId}
-            onNewChat={createNewChat}
-            onDeleteChat={handleDeleteChat}
-          />
-        </div>
+        <ChatSidebar
+          chats={chats}
+          activeChatId={activeChatId}
+          onChatSelect={setActiveChatId}
+          onNewChat={createNewChat}
+          onDeleteChat={handleDeleteChat}
+        />
       )}
 
       <div className={`flex flex-col ${showSidebar ? 'flex-1' : 'w-full'}`}>
-        <Header 
-          onOpenSettings={() => setOpenSettings(true)} 
+        <Header
+          onOpenSettings={() => setOpenSettings(true)}
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
           showSidebar={showSidebar}
         >
-          {/* Model Selector Dropdown - right next to upload button, small size */}
-          <div className="flex items-center space-x-1">
-            <Select
-              value={selectedModel}
-              onValueChange={setSelectedModel}
-            >
-              <SelectTrigger
-                className="h-8 w-[120px] px-2 text-xs rounded-md border border-input bg-background"
-                aria-label="Select Gemini Model"
-              >
-                <SelectValue>
-                  {
-                    GEMINI_MODELS.find(model => model.key === selectedModel)?.label
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent side="bottom" className="w-[150px] min-w-[120px] text-xs !z-50 bg-popover">
-                {GEMINI_MODELS.map(model => (
-                  <SelectItem 
-                    key={model.key} 
-                    value={model.key} 
-                    className="text-xs"
-                  >
-                    {model.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 rounded-full"
-              onClick={() => setShowImageUploader(true)}
-              title="Upload image"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <ScreenCapture 
-            onCapturedText={handleCapturedText} 
+          <ChatHeaderActions
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            onShowImageUploader={() => setShowImageUploader(true)}
+            onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            theme={theme}
+            GEMINI_MODELS={GEMINI_MODELS}
+          />
+          <ScreenCapture
+            onCapturedText={handleCapturedText}
             onCapturedImage={handleCapturedImage}
           />
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="h-8 w-8 rounded-full"
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
         </Header>
-        
+
         <div className="flex-1 overflow-y-auto p-2 chat-scrollbar">
-          <div className="space-y-2">
-            {activeChat && activeChat.messages.map((message, index) => (
-              <ChatMessage
-                key={index}
-                role={message.role}
-                content={message.content}
-                timestamp={message.timestamp}
-                imageUrl={message.imageUrl}
-              />
-            ))}
-            {isLoading && (
-              <div className="flex items-center space-x-2 px-3 py-1 max-w-fit rounded-full bg-secondary text-secondary-foreground mb-2">
-                <div className="flex space-x-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
-                </div>
-                <span className="text-xs">Thinking...</span>
-              </div>
-            )}
-            {uploadedImage && (
-              <div className="flex flex-col space-y-2 items-end">
-                <div className="rounded-md overflow-hidden border border-border max-w-[300px]">
-                  <img 
-                    src={uploadedImage} 
-                    alt="Uploaded" 
-                    className="max-w-full h-auto object-contain"
-                  />
-                </div>
-                <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleCancelUpload}
-                    className="text-xs"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 px-2 pb-2">
-          {/* VoiceControls next to ChatInput */}
-          <VoiceControls
-            onVoiceInput={handleVoiceInput}
-            onSpeak={speakText}
-            disabled={isLoading}
+          <ChatMessageList
+            messages={activeMessages}
+            isLoading={isLoading}
+            uploadedImage={uploadedImage}
+            handleCancelUpload={handleCancelUpload}
+            messagesEndRef={messagesEndRef}
           />
-          <div className="flex-1">
-            <ChatInput
-              onSendMessage={handleSendWithImage}
-              disabled={isLoading}
-              imageAttached={!!uploadedImage}
-              onImagePaste={handleInputImagePaste}
-            />
-          </div>
         </div>
-        
-        <SettingsDialog 
-          open={openSettings} 
+        <ChatInputArea
+          onVoiceInput={handleVoiceInput}
+          onSpeak={speakText}
+          isLoading={isLoading}
+          onSendMessage={handleSendWithImage}
+          imageAttached={!!uploadedImage}
+          onImagePaste={handleInputImagePaste}
+        />
+
+        <SettingsDialog
+          open={openSettings}
           onOpenChange={(open) => {
             setOpenSettings(open);
             if (!open) {
@@ -557,10 +468,9 @@ const ChatInterface: React.FC = () => {
                 }
               });
             }
-          }} 
+          }}
         />
-        
-        <ImageUploader 
+        <ImageUploader
           open={showImageUploader}
           onOpenChange={setShowImageUploader}
           onImageUpload={handleImageUpload}
