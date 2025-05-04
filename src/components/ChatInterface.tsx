@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import ChatSidebar from "./ChatSidebar";
 import ChatHeaderActions from "./ChatHeaderActions";
@@ -33,8 +34,8 @@ const GEMINI_MODELS = [
     label: "Gemini 2.0 Flash"
   },
   {
-    key: "gemini-2.5-pro",
-    label: "Gemini 2.5 Pro"
+    key: "gemini-2.5-flash",
+    label: "Gemini 2.5 Flash"
   }
 ];
 
