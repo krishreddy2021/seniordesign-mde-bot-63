@@ -74,12 +74,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                   ol: ({ node, ...props }) => <ol className="list-decimal pl-4 my-2" {...props} />,
                   li: ({ node, ...props }) => <li className="my-1" {...props} />,
                   a: ({ node, ...props }) => <a className="text-blue-500 underline" {...props} />,
-                  code: ({ node, inline, ...props }) => 
-                    inline ? (
+                  code: ({ node, className, ...props }) => {
+                    const match = /language-(\w+)/.exec(className || "");
+                    const isInline = !match && (className || "").includes("inline");
+                    
+                    return isInline ? (
                       <code className="bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded text-xs" {...props} />
                     ) : (
                       <code className="block bg-gray-200 dark:bg-gray-800 p-2 rounded-md my-2 text-xs overflow-x-auto" {...props} />
-                    ),
+                    );
+                  },
                   pre: ({ node, ...props }) => <pre className="overflow-x-auto my-2" {...props} />,
                   blockquote: ({ node, ...props }) => (
                     <blockquote className="border-l-2 border-muted pl-2 italic my-2" {...props} />
@@ -119,3 +123,4 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 };
 
 export default ChatMessage;
+
