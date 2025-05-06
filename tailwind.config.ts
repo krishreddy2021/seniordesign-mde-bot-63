@@ -19,6 +19,49 @@ export default {
 			}
 		},
 		extend: {
+			typography: {
+				DEFAULT: {
+					css: {
+						maxWidth: 'none',
+						color: 'inherit',
+						a: {
+							color: 'inherit',
+							textDecoration: 'underline',
+							fontWeight: '500',
+						},
+						strong: {
+							fontWeight: '700',
+						},
+						code: {
+							fontWeight: '500',
+						},
+						'code::before': {
+							content: '""',
+						},
+						'code::after': {
+							content: '""',
+						},
+						'blockquote p:first-of-type::before': { content: 'none' },
+						'blockquote p:last-of-type::after': { content: 'none' },
+						h1: {
+							fontWeight: '700',
+						},
+						h2: {
+							fontWeight: '600',
+						},
+						h3: {
+							fontWeight: '600',
+						},
+						h4: {
+							fontWeight: '600',
+						},
+						pre: {
+							backgroundColor: 'rgb(var(--secondary))',
+							color: 'inherit',
+						},
+					},
+				},
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -93,5 +136,5 @@ export default {
 			}
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [require("tailwindcss-animate"), require('@tailwindcss/typography')],
 } satisfies Config;

@@ -25,7 +25,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   handleCancelUpload,
   messagesEndRef,
 }) => (
-  <div className="space-y-2">
+  <div className="space-y-4"> {/* increased space between messages */}
     {messages.map((message, idx) => (
       <ChatMessage
         key={idx}
